@@ -1,4 +1,4 @@
-const { Schema, model } = require("mongoose");
+const { Schema, model, plugin } = require("mongoose");
 const uniqueValidator = require("mongoose-unique-validator");
 
 const schema = Schema({
@@ -22,7 +22,9 @@ const schema = Schema({
   city: String,
   country: String,
   continent: String,
+  image: String,
   phone: String,
+  passwordHash: String,
   hobbies: [String],
   network: {
     type: Schema.Types.ObjectId,
@@ -42,12 +44,13 @@ const schema = Schema({
       sender: {
         type: Schema.Types.ObjectId,
         ref: "User",
-        required: true,
       },
     },
   ],
   notification: [{ id: String }],
 });
+
+plugin(uniqueValidator);
 
 const User = model("User", schema);
 
