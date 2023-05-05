@@ -1,5 +1,12 @@
 const { GraphQLError } = require("graphql");
 const User = require("../models/User");
+const jwt = require("jsonwebtoken");
+const {
+  lowerCase,
+  getAllUsers,
+  handleEmptyFields,
+  getUserByField,
+} = require("../utils/userHelpers");
 
 const typeDefs = `
   type Message {
@@ -19,7 +26,7 @@ const typeDefs = `
   }
 
   type User {
-    id: ID!
+    id: String
     name: String!
     email: String!
     desired_name: String
@@ -40,12 +47,13 @@ const typeDefs = `
   type Query {
     testUser: Int!
     clearUsers: String!
+    findUser(name: String, phone: String, email: String): [User]!
+    allUsers: [User]!
   }
 
   type Mutation {
-    createUser(name: String!, email: String!, gender: String!, password: String! ): User
-    findUser(name: String!): User
-    allUsers: [User]
+    createUser(name: String!, email: String!, gender: String!, password: String!, phone: String ): User
+    updateUser(name: String, email: String, hobbies: [String], image: String, city: String, country: String, password: String, phone: String ): User
   }
 `;
 
@@ -56,19 +64,26 @@ const resolvers = {
       await User.deleteMany();
       return "cleared";
     },
+    findUser: async (root, args) => {
+      handleEmptyFields(args);
+      const name = args.name;
+      const phone = args.phone;
+      const email = args.email;
+
+      if (name) {
+        return await getUserByField("name", name);
+      } else if (phone) {
+        return await getUserByField("phone", phone);
+      } else if (email) {
+        return await getUserByField("email", email);
+      }
+    },
+    allUsers: async () => await getAllUsers(),
   },
   Mutation: {
     createUser: async (_, args) => {
       //handles any empty field
-      Object.entries(args).forEach(([key, val]) => {
-        if (val === "")
-          throw new GraphQLError(`'${key}' field cannot be empty`, {
-            extensions: {
-              code: "BAD_USER_INPUT",
-              invalidArg: key,
-            },
-          });
-      });
+      handleEmptyFields(args);
       const user = new User(args);
 
       try {

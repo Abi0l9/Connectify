@@ -26,7 +26,12 @@ const schema = Schema({
   country: String,
   continent: String,
   image: String,
-  phone: String,
+  phone: {
+    type: String,
+    required: true,
+    unique: true,
+    minlength: 8,
+  },
   passwordHash: String,
   hobbies: [String],
   network: {
