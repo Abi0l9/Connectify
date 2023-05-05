@@ -6,6 +6,7 @@ const {
   getAllUsers,
   handleEmptyFields,
   getUserByField,
+  getUserById,
 } = require("../utils/userHelpers");
 
 const typeDefs = `
@@ -53,7 +54,7 @@ const typeDefs = `
 
   type Mutation {
     createUser(name: String!, email: String!, gender: String!, password: String!, phone: String ): User
-    updateUser(name: String, email: String, hobbies: [String], image: String, city: String, country: String, password: String, phone: String ): User
+    updateUser(id: String, email: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
   }
 `;
 
@@ -92,6 +93,58 @@ const resolvers = {
         throw new GraphQLError(error.message);
       }
       return user;
+    },
+    updateUser: async (_, args) => {
+      handleEmptyFields(args);
+      //editable fields
+      const id = args.id;
+      // const name = args.name;
+      const phone = args.phone;
+      const email = args.email;
+      const city = args.city;
+      const country = args.country;
+      const image = args.image;
+      const password = args.password;
+      const hobby = args.hobby;
+
+      const userExists = await getUserById(id);
+
+      if (userExists) {
+        try {
+          if (phone) {
+            await User.findByIdAndUpdate(id, { phone });
+            return { ...userExists, phone };
+          } else if (email) {
+            await User.findByIdAndUpdate(id, { email });
+            return { ...userExists, email };
+          } else if (city) {
+            await User.findByIdAndUpdate(id, { city });
+            return { ...userExists, city };
+          } else if (country) {
+            await User.findByIdAndUpdate(id, { country });
+            return { ...userExists, country };
+          } else if (hobby) {
+            await User.findByIdAndUpdate(id, {
+              hobbies: [...new Set(userExists.hobbies.concat(hobby))],
+            });
+            return {
+              ...userExists,
+              hobbies: [...new Set(userExists.hobbies.concat(hobby))],
+            };
+          }
+        } catch (error) {
+          throw new GraphQLError(error.message);
+        }
+      } else {
+        throw new GraphQLError("User doesn't exist", {
+          extensions: {
+            code: "BAD_USER_INPUT",
+            invalidArgs: id,
+          },
+        });
+      }
+
+      // return userExists;
     },
   },
 };
