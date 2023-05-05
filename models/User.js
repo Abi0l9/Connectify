@@ -5,7 +5,6 @@ const schema = Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
     minlength: 5,
   },
   email: {
@@ -18,7 +17,11 @@ const schema = Schema({
     type: String,
     unique: true,
     minlength: 1,
+    default: function () {
+      return this.id;
+    },
   },
+  gender: String,
   city: String,
   country: String,
   continent: String,

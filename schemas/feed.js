@@ -2,13 +2,17 @@ const Feed = require("../models/Feed");
 
 const typeDefs = `
   type Query {
-    test: Int!
+    testFeed: Int!
+  }
+
+  type Feed {
+    id: ID!
   }
 `;
 
 const resolvers = {
   Query: {
-    test: () => 2,
+    testFeed: () => 2,
   },
 };
 

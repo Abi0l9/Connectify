@@ -22,6 +22,10 @@ const { resolvers: UserResolvers } = require("./schemas/User");
 const { typeDefs: FeedTypes } = require("./schemas/feed");
 const { resolvers: FeedResolvers } = require("./schemas/feed");
 
+//Network Types and Resolvers
+const { typeDefs: NetworkTypes } = require("./schemas/network");
+const { resolvers: NetworkResolvers } = require("./schemas/network");
+
 const start = async () => {
   const app = express();
   const httpServer = http.createServer(app);
@@ -32,8 +36,8 @@ const start = async () => {
   });
 
   const schema = makeExecutableSchema({
-    typeDefs: [UserTypes, FeedTypes],
-    resolvers: merge(UserResolvers, FeedResolvers),
+    typeDefs: [UserTypes, FeedTypes, NetworkTypes],
+    resolvers: merge(UserResolvers, FeedResolvers, NetworkResolvers),
   });
 
   const serverCleanup = useServer({ schema }, wsServer);
@@ -62,7 +66,7 @@ const start = async () => {
     express.json(),
     expressMiddleware(server, {
       context: async ({ req }) => {
-        console.log(req.headers);
+        // console.log(req.headers);
         return {};
       },
     })
