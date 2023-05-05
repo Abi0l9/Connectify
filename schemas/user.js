@@ -1,9 +1,15 @@
 const User = require("../models/User");
 
-export const typeDefs = `
+const typeDefs = `
+  type Query {
     test: Int!
+  }
 `;
 
-export const resolvers = {
-  test: () => 1,
+const resolvers = {
+  Query: {
+    test: () => 1,
+  },
 };
+
+module.exports = { typeDefs, resolvers };
