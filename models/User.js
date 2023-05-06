@@ -46,19 +46,23 @@ const schema = Schema({
   ],
   messages: [
     {
-      type: Schema.Types.ObjectId,
-      content: String,
-      time: String,
-      sender: {
-        type: Schema.Types.ObjectId,
-        ref: "User",
+      inbox: {
+        type: [
+          {
+            sender: String,
+            content: String,
+            time: String,
+          },
+        ],
       },
+      sender: String,
+      receiver: String,
     },
   ],
   notification: [{ id: String }],
 });
 
-plugin(uniqueValidator);
+// plugin(uniqueValidator);
 
 const User = model("User", schema);
 

@@ -10,10 +10,16 @@ const {
 } = require("../utils/userHelpers");
 
 const typeDefs = `
-  type Message {
+  type Inbox {
     id: ID!
+    sender: String
     content: String!
     time: String!
+  }
+
+  type Message {
+    inbox: [Inbox]!
+    receiver: String!
     sender: String!
   }
 
@@ -55,6 +61,7 @@ const typeDefs = `
   type Mutation {
     createUser(name: String!, email: String!, gender: String!, password: String!, phone: String ): User
     updateUser(id: String, email: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
+    sendMsg(sender: String!, receiver: String!, content: String!): User
   }
 `;
 
@@ -98,7 +105,7 @@ const resolvers = {
       handleEmptyFields(args);
       //editable fields
       const id = args.id;
-      // const name = args.name;
+      const name = args.name;
       const phone = args.phone;
       const email = args.email;
       const city = args.city;
@@ -114,6 +121,9 @@ const resolvers = {
           if (phone) {
             await User.findByIdAndUpdate(id, { phone });
             return { ...userExists, phone };
+          } else if (name) {
+            await User.findByIdAndUpdate(id, { name });
+            return { ...userExists, name };
           } else if (email) {
             await User.findByIdAndUpdate(id, { email });
             return { ...userExists, email };
@@ -145,6 +155,55 @@ const resolvers = {
       }
 
       // return userExists;
+    },
+    sendMsg: async (_, args) => {
+      handleEmptyFields(args);
+
+      const { sender, receiver, content } = args;
+      const senderExists = await User.findById(sender);
+      const receiverExists = await User.findById(receiver);
+
+      const newMsg = { sender, content, time: Date().toString() };
+
+      if (senderExists && receiverExists) {
+        const senderMsgsExists = senderExists.messages.find(
+          (message) =>
+            (message.sender === sender && message.receiver === receiver) ||
+            (message.receiver === sender && message.sender === receiver)
+        );
+
+        const receiverMsgsExists = receiverExists.messages.find(
+          (message) =>
+            (message.sender === sender && message.receiver === receiver) ||
+            (message.sender === receiver && message.receiver === sender)
+        );
+
+        if (senderMsgsExists || receiverMsgsExists) {
+          senderMsgsExists.inbox = senderMsgsExists.inbox.concat(newMsg);
+          receiverMsgsExists.inbox = receiverMsgsExists.inbox.concat(newMsg);
+
+          await senderExists.save();
+          await receiverExists.save();
+
+          return senderExists;
+        } else {
+          const initialMsg = {
+            sender,
+            receiver,
+            inbox: [newMsg],
+          };
+
+          senderExists.messages = senderExists.messages.concat(initialMsg);
+          await senderExists.save();
+
+          receiverExists.messages = receiverExists.messages.concat(initialMsg);
+          await receiverExists.save();
+
+          return senderExists;
+        }
+      } else {
+        throw new GraphQLError("Sender/Receiver doesn't exists");
+      }
     },
   },
 };
