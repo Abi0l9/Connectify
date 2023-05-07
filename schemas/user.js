@@ -318,29 +318,41 @@ const resolvers = {
       await user.save();
       return "message deleted";
     },
-    updateMsg: async (_, args) => {
-      handleEmptyFields(args);
+    // updateMsg: async (_, args) => {
+    //   handleEmptyFields(args);
 
-      const { userId, convoId, msgId, update } = args;
-      const user = await User.findById(userId);
-      const message = user.messages.find(
-        (msg) => msg._id.toString() === convoId
-      );
+    //   const { userId, convoId, msgId, update } = args;
+    //   const user = await User.findById(userId);
+    //   const message = user.messages.find(
+    //     (msg) => msg._id.toString() === convoId
+    //   );
 
-      const target = message.inbox.find(
-        (content) => content._id.toString() === msgId
-      );
+    //   //trying to update receiver too bq3 down
+    //   const { sender, receiver } = message;
 
-      if (target.sender.id !== userId) {
-        handleAuthentication();
-      }
+    //   if(sender.id !== userId){
+    //     const receiver = await User.findById(receiver.id);
+    //     const message = receiver.messages.find(
+    //       (msg) => msg._id.toString() === convoId
+    //     );
+    //   }
 
-      target.time = now();
-      target.content = update;
+    //   console.log(receiver);
 
-      await user.save();
-      return target;
-    },
+    //   const target = message?.inbox.find(
+    //     (content) => content._id.toString() === msgId
+    //   );
+
+    //   if (target?.sender.id !== userId) {
+    //     handleAuthentication();
+    //   }
+
+    //   target.time = now();
+    //   target.content = update;
+
+    //   await user.save();
+    //   return target;
+    // },
   },
 };
 
