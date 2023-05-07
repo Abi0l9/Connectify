@@ -10,17 +10,27 @@ const {
 } = require("../utils/userHelpers");
 
 const typeDefs = `
+  type Sender {
+    id: String
+    name: String
+  }
+
+  type Receiver {
+    id: String
+    name: String
+  }
+
   type Inbox {
     id: ID!
-    sender: String
+    sender: Sender!
     content: String!
     time: String!
   }
 
   type Message {
     inbox: [Inbox]!
-    receiver: String!
-    sender: String!
+    receiver: Sender
+    sender: Receiver
   }
 
   type Notification {
@@ -56,12 +66,14 @@ const typeDefs = `
     clearUsers: String!
     findUser(name: String, phone: String, email: String): [User]!
     allUsers: [User]!
+    getMsgs(id: String!): [Message]!
   }
 
   type Mutation {
     createUser(name: String!, email: String!, gender: String!, password: String!, phone: String ): User
     updateUser(id: String, email: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
     sendMsg(sender: String!, receiver: String!, content: String!): User
+    clearAllMsgs(userId: String!): User
   }
 `;
 
@@ -87,6 +99,12 @@ const resolvers = {
       }
     },
     allUsers: async () => await getAllUsers(),
+    getMsgs: async (_, args) => {
+      handleEmptyFields(args);
+
+      const { messages } = await getUserById(args.id);
+      return messages;
+    },
   },
   Mutation: {
     createUser: async (_, args) => {
@@ -153,8 +171,6 @@ const resolvers = {
           },
         });
       }
-
-      // return userExists;
     },
     sendMsg: async (_, args) => {
       handleEmptyFields(args);
@@ -163,7 +179,14 @@ const resolvers = {
       const senderExists = await User.findById(sender);
       const receiverExists = await User.findById(receiver);
 
-      const newMsg = { sender, content, time: Date().toString() };
+      const { id: senderId, name: senderName } = senderExists;
+      const { id: receiverId, name: receiverName } = receiverExists;
+
+      const newMsg = {
+        sender: { id: senderId, name: senderName },
+        content,
+        time: Date().toString(),
+      };
 
       if (senderExists && receiverExists) {
         const senderMsgsExists = senderExists.messages.find(
@@ -188,8 +211,8 @@ const resolvers = {
           return senderExists;
         } else {
           const initialMsg = {
-            sender,
-            receiver,
+            sender: { id: senderId, name: senderName },
+            receiver: { id: receiverId, name: receiverName },
             inbox: [newMsg],
           };
 
@@ -204,6 +227,14 @@ const resolvers = {
       } else {
         throw new GraphQLError("Sender/Receiver doesn't exists");
       }
+    },
+    clearAllMsgs: async (_, args) => {
+      handleEmptyFields(args);
+
+      const user = await User.findById(args.userId);
+      user.messages = [];
+      await user.save();
+      return user;
     },
   },
 };

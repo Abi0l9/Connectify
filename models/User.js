@@ -49,14 +49,23 @@ const schema = Schema({
       inbox: {
         type: [
           {
-            sender: String,
+            sender: {
+              id: String,
+              name: String,
+            },
             content: String,
             time: String,
           },
         ],
       },
-      sender: String,
-      receiver: String,
+      sender: {
+        id: String,
+        name: String,
+      },
+      receiver: {
+        id: String,
+        name: String,
+      },
     },
   ],
   notification: [{ id: String }],
