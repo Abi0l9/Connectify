@@ -13,6 +13,25 @@ const handleEmptyFields = (args) => {
   });
 };
 
+const handleNotFound = (initialMsg = "", value = "", msg = "") => {
+  throw new GraphQLError(`${initialMsg} '${value}' ${msg}`, {
+    extensions: {
+      code: "BAD_USER_INPUT",
+      invalidArg: value,
+    },
+  });
+};
+
+const handleAuthentication = () => {
+  throw new GraphQLError("You're not authenticated to perform this action", {
+    extensions: {
+      code: "AUTHENTICATION_ERROR",
+    },
+  });
+};
+
+const now = () => Date().toString();
+
 const getAllUsers = async (args = {}) => {
   const users = await User.find({});
 
@@ -71,8 +90,11 @@ const lowerCase = (input) => input.toLowerCase();
 
 module.exports = {
   handleEmptyFields,
+  now,
+  handleNotFound,
   getAllUsers,
   lowerCase,
   getUserByField,
   getUserById,
+  handleAuthentication,
 };

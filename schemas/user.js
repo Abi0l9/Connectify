@@ -7,6 +7,8 @@ const {
   handleEmptyFields,
   getUserByField,
   getUserById,
+  now,
+  handleAuthentication,
 } = require("../utils/userHelpers");
 
 const typeDefs = `
@@ -28,9 +30,10 @@ const typeDefs = `
   }
 
   type Message {
-    inbox: [Inbox]!
-    receiver: Sender
-    sender: Receiver
+    id: ID!
+    inbox: [Inbox]
+    receiver: Receiver
+    sender: Sender
   }
 
   type Notification {
@@ -67,6 +70,7 @@ const typeDefs = `
     findUser(name: String, phone: String, email: String): [User]!
     allUsers: [User]!
     getMsgs(id: String!): [Message]!
+    getConversations(userId: String!, receiverId: String!, msgId: String): Message
   }
 
   type Mutation {
@@ -74,6 +78,9 @@ const typeDefs = `
     updateUser(id: String, email: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
     sendMsg(sender: String!, receiver: String!, content: String!): User
     clearAllMsgs(userId: String!): User
+    deleteConversation(userId: String!, convoId: String!): User
+    deleteOneMessage(userId: String!, convoId: String!, msgId: String!): String
+    updateMsg(userId: String!, convoId: String!, msgId: String!, update: String!): Inbox
   }
 `;
 
@@ -104,6 +111,25 @@ const resolvers = {
 
       const { messages } = await getUserById(args.id);
       return messages;
+    },
+    getConversations: async (_, args) => {
+      const { userId, receiverId, msgId } = args;
+      handleEmptyFields({ userId, receiverId });
+
+      const { messages } = await getUserById(userId);
+      const convo = messages.find(
+        ({ sender, receiver }) =>
+          (sender.id === userId && receiver.id === receiverId) ||
+          (sender.id === receiverId && receiver.id === userId)
+      );
+
+      // if (convo && msgId) {
+      //   const msg = convo.inbox.find(({ id }) => id === msgId);
+      //   console.log(msg);
+      //   return msg;
+      // }
+
+      return convo;
     },
   },
   Mutation: {
@@ -188,20 +214,51 @@ const resolvers = {
         time: Date().toString(),
       };
 
+      const initialMsg = {
+        sender: { id: senderId, name: senderName },
+        receiver: { id: receiverId, name: receiverName },
+        inbox: [newMsg],
+      };
+
       if (senderExists && receiverExists) {
+        //find message history
         const senderMsgsExists = senderExists.messages.find(
           (message) =>
-            (message.sender === sender && message.receiver === receiver) ||
-            (message.receiver === sender && message.sender === receiver)
+            (message.sender.id === sender &&
+              message.receiver.id === receiver) ||
+            (message.receiver.id === sender && message.sender.id === receiver)
         );
 
         const receiverMsgsExists = receiverExists.messages.find(
           (message) =>
-            (message.sender === sender && message.receiver === receiver) ||
-            (message.sender === receiver && message.receiver === sender)
+            (message.sender.id === sender &&
+              message.receiver.id === receiver) ||
+            (message.sender.id === receiver && message.receiver.id === sender)
         );
 
-        if (senderMsgsExists || receiverMsgsExists) {
+        if (!senderMsgsExists && receiverMsgsExists) {
+          console.log("sender has no message history...");
+
+          senderExists.messages = senderExists.messages.concat(initialMsg);
+          receiverMsgsExists.inbox = receiverMsgsExists.inbox.concat(newMsg);
+
+          await senderExists.save();
+          await receiverExists.save();
+
+          return senderExists;
+        } else if (senderMsgsExists && !receiverMsgsExists) {
+          console.log("receiver has no message history...");
+
+          senderMsgsExists.inbox = senderMsgsExists.inbox.concat(newMsg);
+          receiverExists.messages = receiverExists.messages.concat(initialMsg);
+
+          await senderExists.save();
+          await receiverExists.save();
+
+          return receiverExists;
+        } else if (senderMsgsExists && receiverMsgsExists) {
+          console.log("both have message history...");
+
           senderMsgsExists.inbox = senderMsgsExists.inbox.concat(newMsg);
           receiverMsgsExists.inbox = receiverMsgsExists.inbox.concat(newMsg);
 
@@ -210,11 +267,7 @@ const resolvers = {
 
           return senderExists;
         } else {
-          const initialMsg = {
-            sender: { id: senderId, name: senderName },
-            receiver: { id: receiverId, name: receiverName },
-            inbox: [newMsg],
-          };
+          console.log("first message");
 
           senderExists.messages = senderExists.messages.concat(initialMsg);
           await senderExists.save();
@@ -235,6 +288,58 @@ const resolvers = {
       user.messages = [];
       await user.save();
       return user;
+    },
+    deleteConversation: async (_, args) => {
+      handleEmptyFields(args);
+
+      const { userId, convoId } = args;
+
+      const user = await User.findById(userId);
+      const convo = user.messages.find((msg) => msg._id.toString() === convoId);
+
+      convo.inbox = [];
+
+      await user.save();
+      return user;
+    },
+    deleteOneMessage: async (_, args) => {
+      handleEmptyFields(args);
+
+      const { userId, convoId, msgId } = args;
+      const user = await User.findById(userId);
+      const message = user.messages.find(
+        (msg) => msg._id.toString() === convoId
+      );
+
+      message.inbox = message.inbox.filter(
+        (content) => content._id.toString() !== msgId
+      );
+
+      await user.save();
+      return "message deleted";
+    },
+    updateMsg: async (_, args) => {
+      handleEmptyFields(args);
+
+      const { userId, convoId, msgId, update } = args;
+      const user = await User.findById(userId);
+      const message = user.messages.find(
+        (msg) => msg._id.toString() === convoId
+      );
+
+      const target = message.inbox.find(
+        (content) => content._id.toString() === msgId
+      );
+
+      if (target.sender.id !== userId) {
+        handleAuthentication();
+      }
+
+      target.time = now();
+      target.content = update;
+
+      await user.save();
+      return target;
     },
   },
 };
