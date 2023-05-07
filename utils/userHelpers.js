@@ -22,6 +22,15 @@ const handleNotFound = (initialMsg = "", value = "", msg = "") => {
   });
 };
 
+const handleUnknownError = (error) => {
+  throw new GraphQLError(error, message, {
+    extensions: {
+      code: "BAD_USER_INPUT",
+      name: error.name,
+    },
+  });
+};
+
 const handleAuthentication = () => {
   throw new GraphQLError("You're not authenticated to perform this action", {
     extensions: {
@@ -91,6 +100,7 @@ const lowerCase = (input) => input.toLowerCase();
 module.exports = {
   handleEmptyFields,
   now,
+  handleUnknownError,
   handleNotFound,
   getAllUsers,
   lowerCase,

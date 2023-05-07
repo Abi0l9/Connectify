@@ -9,6 +9,7 @@ const {
   getUserById,
   now,
   handleAuthentication,
+  handleUnknownError,
 } = require("../utils/userHelpers");
 
 const typeDefs = `
@@ -78,9 +79,11 @@ const typeDefs = `
     updateUser(id: String, email: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
     sendMsg(sender: String!, receiver: String!, content: String!): User
     clearAllMsgs(userId: String!): User
+    clearMsgHistory(userId: String!, msgId: String!):[Message]!
     deleteConversation(userId: String!, convoId: String!): User
     deleteOneMessage(userId: String!, convoId: String!, msgId: String!): String
     updateMsg(userId: String!, convoId: String!, msgId: String!, update: String!): Inbox
+    deleteBatchMessages(userId: String!, convoId: String!, msgIds: [String!]!): Message
   }
 `;
 
@@ -289,18 +292,45 @@ const resolvers = {
       await user.save();
       return user;
     },
+    //clears Inbox but sender and receiver history remains
     deleteConversation: async (_, args) => {
       handleEmptyFields(args);
 
       const { userId, convoId } = args;
 
       const user = await User.findById(userId);
-      const convo = user.messages.find((msg) => msg._id.toString() === convoId);
 
-      convo.inbox = [];
+      try {
+        const convo = user.messages.find(
+          (msg) => msg._id.toString() === convoId
+        );
 
-      await user.save();
+        convo.inbox = [];
+
+        await user.save();
+      } catch (error) {
+        handleUnknownError(error);
+      }
       return user;
+    },
+    // clears msg history between 2 users for loggedIn User
+    clearMsgHistory: async (_, args) => {
+      handleEmptyFields(args);
+
+      const { userId, msgId } = args;
+
+      const user = await User.findById(userId);
+
+      try {
+        user.messages = user.messages.filter(
+          (msg) => msg._id.toString() !== msgId
+        );
+
+        await user.save();
+        return user.messages;
+      } catch (error) {
+        handleUnknownError(error);
+      }
     },
     deleteOneMessage: async (_, args) => {
       handleEmptyFields(args);
@@ -318,6 +348,23 @@ const resolvers = {
       await user.save();
       return "message deleted";
     },
+    deleteBatchMessages: async (_, args) => {
+      handleEmptyFields(args);
+
+      const { userId, convoId, msgIds } = args;
+      const user = await User.findById(userId);
+      const message = user.messages.find(
+        (msg) => msg._id.toString() === convoId
+      );
+
+      const remMsgs = message.inbox.filter(
+        (m) => !msgIds.includes(m._id.toString())
+      );
+      message.inbox = remMsgs;
+
+      await user.save();
+      return message;
+    },
     // updateMsg: async (_, args) => {
     //   handleEmptyFields(args);
 
@@ -327,7 +374,7 @@ const resolvers = {
     //     (msg) => msg._id.toString() === convoId
     //   );
 
-    //   //trying to update receiver too bq3 down
+    //   //trying to update receiver
     //   const { sender, receiver } = message;
 
     //   if(sender.id !== userId){
