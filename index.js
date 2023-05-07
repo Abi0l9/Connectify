@@ -9,6 +9,8 @@ const cors = require("cors");
 const http = require("http");
 const { merge } = require("lodash");
 
+const jwt = require("jsonwebtoken");
+
 require("./db");
 
 const { WebSocketServer } = require("ws");
@@ -25,6 +27,7 @@ const { resolvers: FeedResolvers } = require("./schemas/feed");
 //Network Types and Resolvers
 const { typeDefs: NetworkTypes } = require("./schemas/network");
 const { resolvers: NetworkResolvers } = require("./schemas/network");
+const User = require("./models/User");
 
 const start = async () => {
   const app = express();
@@ -66,7 +69,18 @@ const start = async () => {
     express.json(),
     expressMiddleware(server, {
       context: async ({ req }) => {
-        // console.log(req.headers);
+        const auth = req ? req.headers.authorization : null;
+
+        if (auth && auth.startsWith("Bearer ")) {
+          const decodedToken = jwt.verify(
+            auth.substring(7),
+            process.env.SECRET
+          );
+
+          const currentUser = await User.findById(decodedToken.userId);
+          return { currentUser };
+        }
+
         return {};
       },
     })

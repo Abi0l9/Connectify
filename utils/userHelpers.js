@@ -23,7 +23,7 @@ const handleNotFound = (initialMsg = "", value = "", msg = "") => {
 };
 
 const handleUnknownError = (error) => {
-  throw new GraphQLError(error, message, {
+  throw new GraphQLError(error.message, {
     extensions: {
       code: "BAD_USER_INPUT",
       name: error.name,
@@ -37,6 +37,28 @@ const handleAuthentication = () => {
       code: "AUTHENTICATION_ERROR",
     },
   });
+};
+
+const handleLoginInputsVal = (args) => {
+  const { email, password } = args;
+
+  if (email.indexOf("@") < 0) {
+    throw new GraphQLError(`${email} not a valid email address`, {
+      extensions: {
+        code: "BAD_USER_INPUT",
+        invalidArg: email,
+      },
+    });
+  }
+
+  if (password.length < 4) {
+    throw new GraphQLError(`length of password is below minimum '4'`, {
+      extensions: {
+        code: "BAD_USER_INPUT",
+        invalidArg: password,
+      },
+    });
+  }
 };
 
 const now = () => Date().toString();
@@ -57,6 +79,7 @@ const getAllUsers = async (args = {}) => {
       hobbies: user.hobbies,
       feed: user.feed,
       messages: user.messages,
+      passwordHash: user.passwordHash,
       desired_name: user.desired_name,
       notification: user.notification,
       city: user.city,
@@ -107,4 +130,5 @@ module.exports = {
   getUserByField,
   getUserById,
   handleAuthentication,
+  handleLoginInputsVal,
 };

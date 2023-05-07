@@ -1,6 +1,8 @@
 const { GraphQLError } = require("graphql");
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+
 const {
   lowerCase,
   getAllUsers,
@@ -10,6 +12,8 @@ const {
   now,
   handleAuthentication,
   handleUnknownError,
+  handleLoginInputsVal,
+  handleNotFound,
 } = require("../utils/userHelpers");
 
 const typeDefs = `
@@ -65,6 +69,11 @@ const typeDefs = `
     notification: [Notification]!
   }
 
+  type Me {
+    userId: String!
+    token: String!
+  }
+
   type Query {
     testUser: Int!
     clearUsers: String!
@@ -76,6 +85,7 @@ const typeDefs = `
 
   type Mutation {
     createUser(name: String!, email: String!, gender: String!, password: String!, phone: String ): User
+    login(email: String!, password: String!): Me
     updateUser(id: String, email: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
     sendMsg(sender: String!, receiver: String!, content: String!): User
     clearAllMsgs(userId: String!): User
@@ -139,14 +149,42 @@ const resolvers = {
     createUser: async (_, args) => {
       //handles any empty field
       handleEmptyFields(args);
-      const user = new User(args);
+      handleLoginInputsVal(args);
 
+      const saltRounds = 10;
+
+      const passwordHash = await bcrypt.hash(args.password, saltRounds);
+
+      const user = new User({ ...args, passwordHash });
       try {
         await user.save();
       } catch (error) {
         throw new GraphQLError(error.message);
       }
       return user;
+    },
+    login: async (_, args) => {
+      handleEmptyFields(args);
+      handleLoginInputsVal(args);
+
+      const { email, password } = args;
+      const user = await User.findOne({ email });
+      !user && handleNotFound("user with email", email, "not found");
+
+      const passwordCompare = await bcrypt.compare(password, user.passwordHash);
+
+      if (passwordCompare) {
+        const userId = user.id;
+        const userForToken = {
+          userId,
+        };
+
+        const token = jwt.sign(userForToken, process.env.SECRET);
+
+        return { userId, token };
+      }
+
+      handleNotFound("Invalid Email/Password");
     },
     updateUser: async (_, args) => {
       handleEmptyFields(args);
