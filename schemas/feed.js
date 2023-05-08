@@ -23,6 +23,7 @@ const typeDefs = `
 
   type Mutation {
     createFeed(content: String!, media:String): Feed
+    deleteFeed(feedId: String!): [Feed]!
   }
 `;
 
@@ -56,19 +57,37 @@ const resolvers = {
         media: media ? media : null,
       };
 
-      console.log(user.feed);
-
       const newFeed = new Feed(feed);
 
       try {
         user.feed = user.feed.concat(newFeed);
         await user.save();
-        // await newFeed.save();
+        await newFeed.save();
       } catch (error) {
         handleUnknownError(error);
       }
 
       return newFeed;
+    },
+    deleteFeed: async (_, args, context) => {
+      handleEmptyFields(args);
+      const userId = handleInvalidID(context);
+
+      const user = await User.findById(userId).populate("feed", {
+        id: 1,
+        content: 1,
+        poster: 1,
+        time: 1,
+      });
+      const remFeeds = user.feed.filter((f) => f.id !== args.feedId);
+      user.feed = remFeeds;
+      try {
+        await user.save();
+      } catch (e) {
+        handleUnknownError(e);
+      }
+
+      return remFeeds;
     },
   },
 };
