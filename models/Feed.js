@@ -9,9 +9,8 @@ const schema = Schema({
     type: Schema.Types.ObjectId,
     ref: "User",
   },
-  date: String,
   time: String,
-  image: String,
+  media: String,
 });
 
 const Feed = model("Feed", schema);

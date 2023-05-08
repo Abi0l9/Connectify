@@ -87,7 +87,7 @@ const typeDefs = `
   type Mutation {
     createUser(name: String!, email: String!, gender: String!, password: String!, phone: String ): User
     login(email: String!, password: String!): Me
-    updateUser(id: String, email: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
+    updateUser( email: String, desired_name: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
     sendMsg( receiver: String!, content: String!): User
     clearAllMsgs: User
     clearMsgHistory( msgId: String!):[Message]!
@@ -138,12 +138,6 @@ const resolvers = {
           (sender.id === receiverId && receiver.id === userId)
       );
 
-      // if (convo && msgId) {
-      //   const msg = convo.inbox.find(({ id }) => id === msgId);
-      //   console.log(msg);
-      //   return msg;
-      // }
-
       return convo;
     },
   },
@@ -188,40 +182,45 @@ const resolvers = {
 
       handleNotFound("Invalid Email/Password");
     },
-    updateUser: async (_, args) => {
+    updateUser: async (_, args, context) => {
       handleEmptyFields(args);
+      const userId = handleInvalidID(context);
+
       //editable fields
-      const id = args.id;
       const name = args.name;
       const phone = args.phone;
       const email = args.email;
       const city = args.city;
       const country = args.country;
       const image = args.image;
+      const desired_name = args.desired_name;
       const password = args.password;
       const hobby = args.hobby;
 
-      const userExists = await getUserById(id);
+      const userExists = await getUserById(userId);
 
       if (userExists) {
         try {
           if (phone) {
-            await User.findByIdAndUpdate(id, { phone });
+            await User.findByIdAndUpdate(userId, { phone });
             return { ...userExists, phone };
           } else if (name) {
-            await User.findByIdAndUpdate(id, { name });
+            await User.findByIdAndUpdate(userId, { name });
             return { ...userExists, name };
           } else if (email) {
-            await User.findByIdAndUpdate(id, { email });
+            await User.findByIdAndUpdate(userId, { email });
             return { ...userExists, email };
           } else if (city) {
-            await User.findByIdAndUpdate(id, { city });
+            await User.findByIdAndUpdate(userId, { city });
             return { ...userExists, city };
+          } else if (desired_name) {
+            await User.findByIdAndUpdate(userId, { desired_name });
+            return { ...userExists, desired_name };
           } else if (country) {
-            await User.findByIdAndUpdate(id, { country });
+            await User.findByIdAndUpdate(userId, { country });
             return { ...userExists, country };
           } else if (hobby) {
-            await User.findByIdAndUpdate(id, {
+            await User.findByIdAndUpdate(userId, {
               hobbies: [...new Set(userExists.hobbies.concat(hobby))],
             });
             return {
@@ -236,7 +235,7 @@ const resolvers = {
         throw new GraphQLError("User doesn't exist", {
           extensions: {
             code: "BAD_USER_INPUT",
-            invalidArgs: id,
+            invalidArgs: userId,
           },
         });
       }
@@ -246,6 +245,7 @@ const resolvers = {
 
       const { receiver, content } = args;
       const sender = handleInvalidID(context);
+
       const senderExists = await User.findById(sender);
       const receiverExists = await User.findById(receiver);
 
