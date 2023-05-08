@@ -76,7 +76,14 @@ const handleInvalidID = (context) => {
 const now = () => Date().toString();
 
 const getAllUsers = async (args = {}) => {
-  const users = await User.find({});
+  // const users = await User.find({});
+
+  const users = await User.find({}).populate("feed", {
+    id: 1,
+    content: 1,
+    poster: 1,
+    time: 1,
+  });
 
   return users.map((user) => {
     const id = user._id.toString();

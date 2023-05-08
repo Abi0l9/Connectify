@@ -64,7 +64,7 @@ const typeDefs = `
     phone: String
     passwordHash: String
     hobbies: [String]!
-    feed: Feed
+    feed: [Feed]!
     network: Network
     messages: [Message]!
     notification: [Notification]!
