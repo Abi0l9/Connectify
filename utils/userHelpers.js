@@ -61,6 +61,18 @@ const handleLoginInputsVal = (args) => {
   }
 };
 
+const handleInvalidID = (context) => {
+  try {
+    const {
+      currentUser: { id: userId },
+    } = context;
+
+    return userId;
+  } catch (error) {
+    handleAuthentication();
+  }
+};
+
 const now = () => Date().toString();
 
 const getAllUsers = async (args = {}) => {
@@ -131,4 +143,5 @@ module.exports = {
   getUserById,
   handleAuthentication,
   handleLoginInputsVal,
+  handleInvalidID,
 };

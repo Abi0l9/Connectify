@@ -14,6 +14,7 @@ const {
   handleUnknownError,
   handleLoginInputsVal,
   handleNotFound,
+  handleInvalidID,
 } = require("../utils/userHelpers");
 
 const typeDefs = `
@@ -80,20 +81,20 @@ const typeDefs = `
     findUser(name: String, phone: String, email: String): [User]!
     allUsers: [User]!
     getMsgs(id: String!): [Message]!
-    getConversations(userId: String!, receiverId: String!, msgId: String): Message
+    getConversations( receiverId: String!, msgId: String): Message
   }
 
   type Mutation {
     createUser(name: String!, email: String!, gender: String!, password: String!, phone: String ): User
     login(email: String!, password: String!): Me
     updateUser(id: String, email: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
-    sendMsg(sender: String!, receiver: String!, content: String!): User
-    clearAllMsgs(userId: String!): User
-    clearMsgHistory(userId: String!, msgId: String!):[Message]!
-    deleteConversation(userId: String!, convoId: String!): User
-    deleteOneMessage(userId: String!, convoId: String!, msgId: String!): String
-    updateMsg(userId: String!, convoId: String!, msgId: String!, update: String!): Inbox
-    deleteBatchMessages(userId: String!, convoId: String!, msgIds: [String!]!): Message
+    sendMsg( receiver: String!, content: String!): User
+    clearAllMsgs: User
+    clearMsgHistory( msgId: String!):[Message]!
+    deleteConversation( convoId: String!): User
+    deleteOneMessage( convoId: String!, msgId: String!): [Inbox]
+    updateMsg( convoId: String!, msgId: String!, update: String!): Inbox
+    deleteBatchMessages( convoId: String!, msgIds: [String!]!): Message
   }
 `;
 
@@ -125,9 +126,10 @@ const resolvers = {
       const { messages } = await getUserById(args.id);
       return messages;
     },
-    getConversations: async (_, args) => {
-      const { userId, receiverId, msgId } = args;
-      handleEmptyFields({ userId, receiverId });
+    getConversations: async (_, args, context) => {
+      const { receiverId, msgId } = args;
+      handleEmptyFields({ receiverId });
+      const userId = handleInvalidID(context);
 
       const { messages } = await getUserById(userId);
       const convo = messages.find(
@@ -239,10 +241,11 @@ const resolvers = {
         });
       }
     },
-    sendMsg: async (_, args) => {
+    sendMsg: async (_, args, context) => {
       handleEmptyFields(args);
 
-      const { sender, receiver, content } = args;
+      const { receiver, content } = args;
+      const sender = handleInvalidID(context);
       const senderExists = await User.findById(sender);
       const receiverExists = await User.findById(receiver);
 
@@ -322,19 +325,20 @@ const resolvers = {
         throw new GraphQLError("Sender/Receiver doesn't exists");
       }
     },
-    clearAllMsgs: async (_, args) => {
-      handleEmptyFields(args);
+    clearAllMsgs: async (_, args, context) => {
+      const userId = handleInvalidID(context);
 
-      const user = await User.findById(args.userId);
+      const user = await User.findById(userId);
       user.messages = [];
       await user.save();
       return user;
     },
     //clears Inbox but sender and receiver history remains
-    deleteConversation: async (_, args) => {
+    deleteConversation: async (_, args, context) => {
       handleEmptyFields(args);
 
-      const { userId, convoId } = args;
+      const userId = handleInvalidID(context);
+      const { convoId } = args;
 
       const user = await User.findById(userId);
 
@@ -352,10 +356,12 @@ const resolvers = {
       return user;
     },
     // clears msg history between 2 users for loggedIn User
-    clearMsgHistory: async (_, args) => {
+    clearMsgHistory: async (_, args, context) => {
       handleEmptyFields(args);
 
-      const { userId, msgId } = args;
+      const userId = handleInvalidID(context);
+
+      const { msgId } = args;
 
       const user = await User.findById(userId);
 
@@ -370,26 +376,33 @@ const resolvers = {
         handleUnknownError(error);
       }
     },
-    deleteOneMessage: async (_, args) => {
+    deleteOneMessage: async (_, args, context) => {
       handleEmptyFields(args);
 
-      const { userId, convoId, msgId } = args;
+      const userId = handleInvalidID(context);
+
+      const { convoId, msgId } = args;
       const user = await User.findById(userId);
       const message = user.messages.find(
         (msg) => msg._id.toString() === convoId
       );
 
-      message.inbox = message.inbox.filter(
+      const inbox = message.inbox.filter(
         (content) => content._id.toString() !== msgId
       );
+      message.inbox = inbox;
 
-      await user.save();
-      return "message deleted";
+      if (inbox.length) {
+        await user.save();
+        return inbox;
+      }
     },
-    deleteBatchMessages: async (_, args) => {
+    deleteBatchMessages: async (_, args, context) => {
       handleEmptyFields(args);
 
-      const { userId, convoId, msgIds } = args;
+      const userId = handleInvalidID(context);
+
+      const { convoId, msgIds } = args;
       const user = await User.findById(userId);
       const message = user.messages.find(
         (msg) => msg._id.toString() === convoId

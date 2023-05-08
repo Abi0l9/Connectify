@@ -28,6 +28,7 @@ const { resolvers: FeedResolvers } = require("./schemas/feed");
 const { typeDefs: NetworkTypes } = require("./schemas/network");
 const { resolvers: NetworkResolvers } = require("./schemas/network");
 const User = require("./models/User");
+const { getUserById } = require("./utils/userHelpers");
 
 const start = async () => {
   const app = express();
@@ -71,17 +72,16 @@ const start = async () => {
       context: async ({ req }) => {
         const auth = req ? req.headers.authorization : null;
 
-        if (auth && auth.startsWith("Bearer ")) {
+        if (auth?.startsWith("Bearer ")) {
           const decodedToken = jwt.verify(
             auth.substring(7),
             process.env.SECRET
           );
 
-          const currentUser = await User.findById(decodedToken.userId);
+          const currentUser = await getUserById(decodedToken.userId);
+
           return { currentUser };
         }
-
-        return {};
       },
     })
   );
