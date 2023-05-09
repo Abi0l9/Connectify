@@ -97,6 +97,7 @@ const getAllUsers = async (args = {}) => {
       phone: user.phone,
       hobbies: user.hobbies,
       feed: user.feed,
+      friends: user.friends,
       messages: user.messages,
       passwordHash: user.passwordHash,
       desired_name: user.desired_name,
@@ -137,6 +138,11 @@ const getUserById = async (id) => {
   return users.find((user) => user.id === id);
 };
 
+const getFriendsList = async (id) => {
+  const user = await getUserById(id);
+  return user.friends;
+};
+
 const lowerCase = (input) => input.toLowerCase();
 
 module.exports = {
@@ -151,4 +157,5 @@ module.exports = {
   handleAuthentication,
   handleLoginInputsVal,
   handleInvalidID,
+  getFriendsList,
 };

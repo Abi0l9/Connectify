@@ -15,6 +15,7 @@ const {
   handleLoginInputsVal,
   handleNotFound,
   handleInvalidID,
+  getFriendsList,
 } = require("../utils/userHelpers");
 
 const typeDefs = `
@@ -44,6 +45,28 @@ const typeDefs = `
 
   type Notification {
     id: ID!
+  }
+
+  type Pendings {
+    id: String
+    name: String
+  }
+
+  type Accepted {
+    id: String
+    name: String
+  }
+
+  type Requests {
+    id: String
+    name: String
+  }
+
+  type Friend {
+    id: ID!
+    pendings: [Pendings]
+    accepted: [Accepted]
+    requests: [Requests]
   }
 
   enum Gender {
@@ -95,6 +118,7 @@ const typeDefs = `
     deleteOneMessage( convoId: String!, msgId: String!): [Inbox]
     updateMsg( convoId: String!, msgId: String!, update: String!): Inbox
     deleteBatchMessages( convoId: String!, msgIds: [String!]!): Message
+    makeFriend(friendId: String!): User
   }
 `;
 
@@ -415,6 +439,109 @@ const resolvers = {
 
       await user.save();
       return message;
+    },
+    makeFriend: async (_, args, context) => {
+      handleEmptyFields(args);
+      const userId = handleInvalidID(context);
+
+      const { friendId } = args;
+
+      const user = await User.findById(userId);
+      const friend = await User.findById(friendId);
+
+      if (!friend) {
+        handleNotFound("user with id ", friendId, "does not exist.");
+      }
+
+      //requests are the ones from others - incomings
+      //pendings are for the ones sent by user himself/herself to others - outgoings
+      //accepted are the ones removed from requests and added into accepted
+
+      // making a friend adds the user to my pending list and appends it to the
+      // other user's request list
+
+      const usersFriendList = user.friends;
+      const friendsFriendList = friend.friends;
+
+      const userExistsInFriendsPendingsList = friendsFriendList?.pending?.find(
+        (u) => u.id === userId
+      );
+
+      const friendExistsInRequestsList = usersFriendList?.requests?.find(
+        (f) => f.id === friendId
+      );
+
+      const friendExistsInPendingList = usersFriendList?.pendings?.find(
+        (f) => f.id === friendId
+      );
+
+      const friendExistsInAcceptedList = usersFriendList?.accepted?.find(
+        (f) => f.id === friendId
+      );
+
+      if (friendExistsInRequestsList) {
+        console.log("friend already sent you a request...");
+
+        // remove friend from requests of user
+        usersFriendList.requests = usersFriendList.requests.filter(
+          (f) => f.id !== friendExistsInRequestsList.id
+        );
+
+        // remove user from pendings of friend
+        friendsFriendList.pendings = friendsFriendList.pendings.filter(
+          (u) => u.id !== userExistsInFriendsPendingsList.id
+        );
+
+        //add to accepted for both
+        usersFriendList.accepted = usersFriendList.accepted.concat(
+          friendExistsInRequestsList
+        );
+        friendsFriendList.accepted = friendsFriendList.accepted.concat(
+          userExistsInFriendsPendingsList
+        );
+
+        try {
+          await user.save();
+          await friend.save();
+        } catch (e) {
+          handleUnknownError(e);
+        }
+      } else if (friendExistsInPendingList) {
+        console.log("friend is yet to accept your request...");
+        //nothing can be done unless he/she accepts the request
+
+        throw new GraphQLError("You can't add an already added user...");
+      } else if (friendExistsInAcceptedList) {
+        console.log(
+          "If you love him/her that much, tell them instead of adding twice..."
+        );
+
+        //friend can't be added twice
+        throw new GraphQLError("Both of you are already friends...");
+      } else {
+        console.log("are you sure this person knows you?");
+
+        //add to user's pendings list
+        usersFriendList.pendings = usersFriendList.pendings.concat({
+          id: friend.id,
+          name: friend.name,
+        });
+
+        //add to user's requests list
+        friendsFriendList.requests = friendsFriendList.requests.concat({
+          id: user.id,
+          name: user.name,
+        });
+
+        try {
+          await user.save();
+          await friend.save();
+        } catch (e) {
+          handleUnknownError(e);
+        }
+      }
+
+      return usersFriendList;
     },
     // updateMsg: async (_, args) => {
     //   handleEmptyFields(args);

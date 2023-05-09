@@ -1,6 +1,31 @@
 const { Schema, model, plugin } = require("mongoose");
 const uniqueValidator = require("mongoose-unique-validator");
 
+const FriendBaseSchema = Schema({
+  id: String,
+  name: String,
+  default: [],
+});
+// const FriendBase = model("FriendBase", FriendBaseSchema, "friendBase");
+
+const MakingFriendsSchema = Schema({
+  requests: [
+    {
+      type: FriendBaseSchema,
+    },
+  ],
+  pendings: [
+    {
+      type: FriendBaseSchema,
+    },
+  ],
+  accepted: [
+    {
+      type: FriendBaseSchema,
+    },
+  ],
+});
+
 const schema = Schema({
   name: {
     type: String,
