@@ -603,10 +603,110 @@ const resolvers = {
       }
       return usersFriendList;
     },
+    cancelFriendRequest: async (_, args, context) => {
+      handleEmptyFields(args);
+      const userId = handleInvalidID(context);
+
+      const { friendId } = args;
+
+      const user = await User.findById(userId);
+      const friend = await User.findById(friendId);
+
+      if (!friend) {
+        handleNotFound("user with id ", friendId, "does not exist.");
+      }
+
+      const usersFriendList = user.friends;
+      const friendsFriendList = friend.friends;
+
+      const userExistsInFriendsRequestsList = friendsFriendList?.requests?.find(
+        (u) => u.id === userId
+      );
+
+      const friendExistsInUsersPendingList = usersFriendList?.pendings?.find(
+        (f) => f.id === friendId
+      );
+
+      if (userExistsInFriendsRequestsList && friendExistsInUsersPendingList) {
+        // remove user from requests of friend
+        friendsFriendList.requests = friendsFriendList.requests.filter(
+          (u) => u.id !== userExistsInFriendsRequestsList.id
+        );
+
+        // remove friend from pendings of user
+        usersFriendList.pendings = usersFriendList?.pendings?.filter(
+          (f) => f.id !== friendExistsInUsersPendingList.id
+        );
+
+        try {
+          await user.save();
+          await friend.save();
+        } catch (e) {
+          handleUnknownError(e);
+        }
+      } else {
+        const error = {
+          name: "BAD_REQUEST",
+          message: "Such request cannot be performed.",
+        };
+        handleUnknownError(error);
+      }
+      return usersFriendList;
+    },
+    declineFriendRequest: async (_, args, context) => {
+      handleEmptyFields(args);
+      const userId = handleInvalidID(context);
+
+      const { friendId } = args;
+
+      const user = await User.findById(userId);
+      const friend = await User.findById(friendId);
+
+      if (!friend) {
+        handleNotFound("user with id ", friendId, "does not exist.");
+      }
+
+      const usersFriendList = user.friends;
+      const friendsFriendList = friend.friends;
+
+      //friend exists in user's requests list
+      const friendExistsInUsersRequestsList = usersFriendList?.requests?.find(
+        (f) => f.id === friendId
+      );
+      const userExistsInFriendsPendingsList = friendsFriendList?.pendings?.find(
+        (u) => u.id === userId
+      );
+
+      if (friendExistsInUsersRequestsList && userExistsInFriendsPendingsList) {
+        // remove friend from requests of user
+        usersFriendList.requests = usersFriendList.requests.filter(
+          (f) => f.id !== friendExistsInUsersRequestsList.id
+        );
+
+        // remove user from pendings of friend
+        friendsFriendList.pendings = friendsFriendList?.pendings?.filter(
+          (f) => f.id !== userExistsInFriendsPendingsList.id
+        );
+
+        try {
+          await user.save();
+          await friend.save();
+        } catch (e) {
+          handleUnknownError(e);
+        }
+      } else {
+        const error = {
+          name: "BAD_REQUEST",
+          message: "Such request cannot be performed.",
+        };
+        handleUnknownError(error);
+      }
+      return usersFriendList;
+    },
 
     deleteAllFriends: async (_, args, context) => {
       const userId = handleInvalidID(context);
-      const user = await User.findByIdAndUpdate("645ac0822dc2154b43b6f52c", {
+      await User.findByIdAndUpdate(userId, {
         friends: { requests: [], pendings: [], accepted: [] },
       });
 
