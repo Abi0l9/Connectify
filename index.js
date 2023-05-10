@@ -17,8 +17,8 @@ const { WebSocketServer } = require("ws");
 const { useServer } = require("graphql-ws/lib/use/ws");
 
 //User Types and Resolvers
-const { typeDefs: UserTypes } = require("./schemas/User");
-const { resolvers: UserResolvers } = require("./schemas/User");
+const { typeDefs: UserTypes } = require("./schemas/user");
+const { resolvers: UserResolvers } = require("./schemas/user");
 
 //Feed Types and Resolvers
 const { typeDefs: FeedTypes } = require("./schemas/feed");
