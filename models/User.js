@@ -4,7 +4,6 @@ const uniqueValidator = require("mongoose-unique-validator");
 const FriendBaseSchema = Schema({
   id: String,
   name: String,
-  default: [],
 });
 // const FriendBase = model("FriendBase", FriendBaseSchema, "friendBase");
 
@@ -54,7 +53,7 @@ const schema = Schema({
   phone: {
     type: String,
     required: true,
-    unique: true,
+    // unique: true,
     minlength: 8,
   },
   passwordHash: String,
@@ -94,6 +93,12 @@ const schema = Schema({
     },
   ],
   notification: [{ id: String }],
+  friends: {
+    type: MakingFriendsSchema,
+    index: true,
+    unique: true,
+    sparse: true,
+  },
 });
 
 // plugin(uniqueValidator);

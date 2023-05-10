@@ -23,10 +23,10 @@ const handleNotFound = (initialMsg = "", value = "", msg = "") => {
 };
 
 const handleUnknownError = (error) => {
-  throw new GraphQLError(error.message, {
+  throw new GraphQLError(error?.message, {
     extensions: {
       code: "BAD_USER_INPUT",
-      name: error.name,
+      name: error?.name,
     },
   });
 };

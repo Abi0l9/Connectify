@@ -89,6 +89,7 @@ const typeDefs = `
     hobbies: [String]!
     feed: [Feed]!
     network: Network
+    friends: Friend
     messages: [Message]!
     notification: [Notification]!
   }
@@ -118,7 +119,11 @@ const typeDefs = `
     deleteOneMessage( convoId: String!, msgId: String!): [Inbox]
     updateMsg( convoId: String!, msgId: String!, update: String!): Inbox
     deleteBatchMessages( convoId: String!, msgIds: [String!]!): Message
-    makeFriend(friendId: String!): User
+    makeFriendRequest(friendId: String!): Friend
+    acceptFriendRequest(friendId: String!): Friend
+    cancelFriendRequest(friendId: String!): Friend
+    declineFriendRequest(friendId: String!): Friend
+    deleteAllFriends: String
   }
 `;
 
@@ -174,8 +179,13 @@ const resolvers = {
       const saltRounds = 10;
 
       const passwordHash = await bcrypt.hash(args.password, saltRounds);
+      const friends = {
+        requests: [],
+        pendings: [],
+        accepted: [],
+      };
 
-      const user = new User({ ...args, passwordHash });
+      const user = new User({ ...args, passwordHash, friends });
       try {
         await user.save();
       } catch (error) {
@@ -272,6 +282,10 @@ const resolvers = {
 
       const senderExists = await User.findById(sender);
       const receiverExists = await User.findById(receiver);
+
+      if (!receiverExists) {
+        handleNotFound("Receiver with id ", receiver, " not found");
+      }
 
       const { id: senderId, name: senderName } = senderExists;
       const { id: receiverId, name: receiverName } = receiverExists;
@@ -440,7 +454,7 @@ const resolvers = {
       await user.save();
       return message;
     },
-    makeFriend: async (_, args, context) => {
+    makeFriendRequest: async (_, args, context) => {
       handleEmptyFields(args);
       const userId = handleInvalidID(context);
 
@@ -463,15 +477,11 @@ const resolvers = {
       const usersFriendList = user.friends;
       const friendsFriendList = friend.friends;
 
-      const userExistsInFriendsPendingsList = friendsFriendList?.pending?.find(
+      const userExistsInFriendsRequestsList = friendsFriendList?.requests?.find(
         (u) => u.id === userId
       );
 
-      const friendExistsInRequestsList = usersFriendList?.requests?.find(
-        (f) => f.id === friendId
-      );
-
-      const friendExistsInPendingList = usersFriendList?.pendings?.find(
+      const friendExistsInUsersPendingList = usersFriendList?.pendings?.find(
         (f) => f.id === friendId
       );
 
@@ -479,34 +489,7 @@ const resolvers = {
         (f) => f.id === friendId
       );
 
-      if (friendExistsInRequestsList) {
-        console.log("friend already sent you a request...");
-
-        // remove friend from requests of user
-        usersFriendList.requests = usersFriendList.requests.filter(
-          (f) => f.id !== friendExistsInRequestsList.id
-        );
-
-        // remove user from pendings of friend
-        friendsFriendList.pendings = friendsFriendList.pendings.filter(
-          (u) => u.id !== userExistsInFriendsPendingsList.id
-        );
-
-        //add to accepted for both
-        usersFriendList.accepted = usersFriendList.accepted.concat(
-          friendExistsInRequestsList
-        );
-        friendsFriendList.accepted = friendsFriendList.accepted.concat(
-          userExistsInFriendsPendingsList
-        );
-
-        try {
-          await user.save();
-          await friend.save();
-        } catch (e) {
-          handleUnknownError(e);
-        }
-      } else if (friendExistsInPendingList) {
+      if (userExistsInFriendsRequestsList && friendExistsInUsersPendingList) {
         console.log("friend is yet to accept your request...");
         //nothing can be done unless he/she accepts the request
 
@@ -518,6 +501,12 @@ const resolvers = {
 
         //friend can't be added twice
         throw new GraphQLError("Both of you are already friends...");
+      } else if (friendId === userId) {
+        console.log(
+          "Thats a stupid act, how can you friend your own self?!..."
+        );
+
+        throw new GraphQLError("You can't send a request to yourself...");
       } else {
         console.log("are you sure this person knows you?");
 
@@ -536,12 +525,92 @@ const resolvers = {
         try {
           await user.save();
           await friend.save();
+          console.log("request sent");
         } catch (e) {
           handleUnknownError(e);
         }
       }
 
       return usersFriendList;
+    },
+    acceptFriendRequest: async (_, args, context) => {
+      handleEmptyFields(args);
+      const userId = handleInvalidID(context);
+
+      const { friendId } = args;
+
+      const user = await User.findById(userId);
+      const friend = await User.findById(friendId);
+
+      if (!friend) {
+        handleNotFound("user with id ", friendId, "does not exist.");
+      }
+
+      const usersFriendList = user.friends;
+      const friendsFriendList = friend.friends;
+
+      //friend exists in user's requests list
+      const friendExistsInUsersRequestsList = usersFriendList?.requests?.find(
+        (f) => f.id === friendId
+      );
+      const userExistsInFriendsPendingsList = friendsFriendList?.pendings?.find(
+        (u) => u.id === userId
+      );
+
+      const friendExistsInAcceptedList = usersFriendList?.accepted?.find(
+        (f) => f.id === friendId
+      );
+
+      if (friendExistsInUsersRequestsList && userExistsInFriendsPendingsList) {
+        console.log("you are about to accept a request...");
+
+        // remove friend from requests of user
+        usersFriendList.requests = usersFriendList.requests.filter(
+          (u) => u.id !== friendExistsInUsersRequestsList.id
+        );
+
+        // remove user from pendings of friend
+        friendsFriendList.pendings = friendsFriendList?.pendings?.filter(
+          (u) => u.id !== userExistsInFriendsPendingsList.id
+        );
+
+        //add to accepted for both
+        usersFriendList.accepted = usersFriendList.accepted.concat(
+          friendExistsInUsersRequestsList
+        );
+
+        friendsFriendList.accepted = friendsFriendList.accepted.concat(
+          userExistsInFriendsPendingsList
+        );
+
+        try {
+          await user.save();
+          await friend.save();
+          console.log("request accepted");
+        } catch (e) {
+          console.log("got here errrrrrrrrrror");
+          handleUnknownError(e);
+        }
+      } else if (friendExistsInAcceptedList) {
+        console.log(
+          "If you love him/her that much, tell them instead of adding twice..."
+        );
+
+        //friend can't be added twice
+        throw new GraphQLError("Both of you are already friends...");
+      } else if (friendId === userId) {
+        throw new GraphQLError("You can't accept yourself...");
+      }
+      return usersFriendList;
+    },
+
+    deleteAllFriends: async (_, args, context) => {
+      const userId = handleInvalidID(context);
+      const user = await User.findByIdAndUpdate("645ac0822dc2154b43b6f52c", {
+        friends: { requests: [], pendings: [], accepted: [] },
+      });
+
+      return "deleted";
     },
     // updateMsg: async (_, args) => {
     //   handleEmptyFields(args);
