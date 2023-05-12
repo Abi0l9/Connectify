@@ -75,6 +75,18 @@ const handleInvalidID = (context) => {
 
 const now = () => Date().toString();
 
+const getRegCode = () => Math.floor(Math.random() * 500000) + 100000 + "";
+
+const refreshCode = async (email) => {
+  const user = await User.findOne({ email });
+  const newCode = getRegCode();
+
+  setTimeout(async () => {
+    user.confirmationCode = newCode;
+    await user.save();
+  }, 900000);
+};
+
 const getAllUsers = async (args = {}) => {
   // const users = await User.find({});
 
@@ -95,6 +107,8 @@ const getAllUsers = async (args = {}) => {
       email: user.email,
       gender: user.gender,
       phone: user.phone,
+      confirmationCode: user.confirmationCode,
+      regStatus: user.regStatus,
       hobbies: user.hobbies,
       feed: user.feed,
       friends: user.friends,
@@ -152,8 +166,10 @@ module.exports = {
   handleNotFound,
   getAllUsers,
   lowerCase,
+  getRegCode,
   getUserByField,
   getUserById,
+  refreshCode,
   handleAuthentication,
   handleLoginInputsVal,
   handleInvalidID,

@@ -48,6 +48,12 @@ const schema = Schema({
   gender: String,
   city: String,
   country: String,
+  confirmationCode: String,
+  regStatus: {
+    type: String,
+    enum: ["inactive", "active"],
+    default: "inactive",
+  },
   continent: String,
   image: String,
   phone: {

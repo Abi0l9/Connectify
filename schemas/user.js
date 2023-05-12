@@ -16,7 +16,12 @@ const {
   handleNotFound,
   handleInvalidID,
   getFriendsList,
+  getRegCode,
+  refreshCode,
 } = require("../utils/userHelpers");
+const mailer = require("../utils/codeMailer");
+const congratsMailer = require("../utils/congratsMailer");
+const resendCodeMailer = require("../utils/resendCodeMailer");
 
 const typeDefs = `
   type Sender {
@@ -74,6 +79,11 @@ const typeDefs = `
     female
   }
 
+  enum RegStatus {
+    active
+    inactive
+  }
+
   type User {
     id: String
     name: String!
@@ -87,6 +97,8 @@ const typeDefs = `
     phone: String
     passwordHash: String
     hobbies: [String]!
+    confirmationCode: String
+    regStatus: RegStatus
     feed: [Feed]!
     network: Network
     friends: Friend
@@ -110,6 +122,8 @@ const typeDefs = `
 
   type Mutation {
     createUser(name: String!, email: String!, gender: String!, password: String!, phone: String ): User
+    confirmUserReg(email: String!, regCode: String!) : User
+    resendCode(email: String!) : User
     login(email: String!, password: String!): Me
     updateUser( email: String, desired_name: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
     sendMsg( receiver: String!, content: String!): User
@@ -185,11 +199,75 @@ const resolvers = {
         accepted: [],
       };
 
-      const user = new User({ ...args, passwordHash, friends });
+      const confirmationCode = getRegCode();
+
+      const user = new User({
+        ...args,
+        passwordHash,
+        friends,
+        confirmationCode,
+      });
+
       try {
         await user.save();
+        await mailer(args.name, args.email, confirmationCode);
+        await refreshCode();
       } catch (error) {
         throw new GraphQLError(error.message);
+      }
+      return user;
+    },
+    confirmUserReg: async (_, args) => {
+      handleEmptyFields(args);
+      const { email, regCode } = args;
+      const user = await User.findOne({ email });
+
+      !user && handleNotFound("user with email", email, "not found");
+
+      const confirmationCode = user.confirmationCode;
+
+      if (user.regStatus === "active") {
+        throw new GraphQLError("User is already verified.");
+      }
+
+      if (confirmationCode !== regCode) {
+        throw new GraphQLError("Invalid or expired code");
+      }
+
+      user.regStatus = "active";
+      try {
+        await user.save();
+        await congratsMailer(user.name.split(" ")[0], email);
+      } catch (e) {
+        handleUnknownError(e);
+      }
+      return user;
+    },
+    resendCode: async (_, args) => {
+      handleEmptyFields(args);
+      const { email } = args;
+      const user = await User.findOne({ email });
+
+      !user && handleNotFound("user with email", email, "not found");
+
+      if (user.regStatus === "active") {
+        throw new GraphQLError("User is already verified.");
+      }
+
+      const confirmationCode = getRegCode();
+
+      user.confirmationCode = confirmationCode;
+
+      try {
+        await user.save();
+        await resendCodeMailer(
+          user.name.split(" ")[0],
+          email,
+          confirmationCode
+        );
+        await refreshCode();
+      } catch (e) {
+        handleUnknownError(e);
       }
       return user;
     },
@@ -200,6 +278,10 @@ const resolvers = {
       const { email, password } = args;
       const user = await User.findOne({ email });
       !user && handleNotFound("user with email", email, "not found");
+
+      if (user.regStatus === "inactive") {
+        throw new GraphQLError("Please, verify your account to gain access.");
+      }
 
       const passwordCompare = await bcrypt.compare(password, user.passwordHash);
 
