@@ -190,6 +190,19 @@ const resolvers = {
       handleEmptyFields(args);
       handleLoginInputsVal(args);
 
+      const userExists = await User.findOne({ email: args.email });
+
+      const confirmationCode = getRegCode();
+
+      if (userExists?.regStatus === "inactive") {
+        await resendCodeMailer(userExists, userExists.email, confirmationCode);
+        throw new GraphQLError(
+          "You are yet to verify your account, a new confirmation code has been sent to your email address."
+        );
+      } else if (userExists?.regStatus === "active") {
+        throw new GraphQLError("Error Occured...Can't have multiple accounts");
+      }
+
       const saltRounds = 10;
 
       const passwordHash = await bcrypt.hash(args.password, saltRounds);
@@ -198,8 +211,6 @@ const resolvers = {
         pendings: [],
         accepted: [],
       };
-
-      const confirmationCode = getRegCode();
 
       const user = new User({
         ...args,
