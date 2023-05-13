@@ -195,7 +195,11 @@ const resolvers = {
       const confirmationCode = getRegCode();
 
       if (userExists?.regStatus === "inactive") {
-        await resendCodeMailer(userExists, userExists.email, confirmationCode);
+        await resendCodeMailer(
+          userExists.name,
+          userExists.email,
+          confirmationCode
+        );
         throw new GraphQLError(
           "You are yet to verify your account, a new confirmation code has been sent to your email address."
         );
