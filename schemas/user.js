@@ -109,6 +109,9 @@ const typeDefs = `
   type Me {
     userId: String!
     token: String!
+    name: String!
+    image: String
+    notification: [Notification]!
   }
 
   type Query {
@@ -118,6 +121,7 @@ const typeDefs = `
     allUsers: [User]!
     getMsgs(id: String!): [Message]!
     getConversations( receiverId: String!, msgId: String): Message
+    getVerifiedUsers: [User]!
   }
 
   type Mutation {
@@ -183,6 +187,14 @@ const resolvers = {
 
       return convo;
     },
+    getVerifiedUsers: async (_, _args, context) => {
+      handleInvalidID(context);
+      const users = await getAllUsers();
+
+      const verified = users.filter((user) => user.regStatus === "active");
+
+      return verified;
+    },
   },
   Mutation: {
     createUser: async (_, args) => {
@@ -195,11 +207,14 @@ const resolvers = {
       const confirmationCode = getRegCode();
 
       if (userExists?.regStatus === "inactive") {
+        userExists.confirmationCode = confirmationCode;
+        await userExists.save();
         await resendCodeMailer(
           userExists.name,
           userExists.email,
           confirmationCode
         );
+        await refreshCode();
         throw new GraphQLError(
           "You are yet to verify your account, a new confirmation code has been sent to your email address."
         );
@@ -292,7 +307,7 @@ const resolvers = {
 
       const { email, password } = args;
       const user = await User.findOne({ email });
-      !user && handleNotFound("user with email", email, "not found");
+      !user && handleNotFound("Invalid email addresss/ password");
 
       if (user.regStatus === "inactive") {
         throw new GraphQLError("Please, verify your account to gain access.");
@@ -302,13 +317,15 @@ const resolvers = {
 
       if (passwordCompare) {
         const userId = user.id;
+        const name = user.name;
+        const image = user.image;
+        const notification = user.notification;
         const userForToken = {
           userId,
         };
 
         const token = jwt.sign(userForToken, process.env.SECRET);
-
-        return { userId, token };
+        return { userId, token, name, image, notification };
       }
 
       handleNotFound("Invalid Email/Password");

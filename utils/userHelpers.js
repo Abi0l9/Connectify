@@ -82,8 +82,10 @@ const refreshCode = async (email) => {
   const newCode = getRegCode();
 
   setTimeout(async () => {
-    user.confirmationCode = newCode;
-    await user.save();
+    if (user) {
+      user.confirmationCode = newCode;
+      await user.save();
+    }
   }, 900000);
 };
 
