@@ -110,6 +110,7 @@ const typeDefs = `
     userId: String!
     token: String!
     name: String!
+    desired_name: String!
     image: String
     notification: [Notification]!
   }
@@ -129,7 +130,7 @@ const typeDefs = `
     confirmUserReg(email: String!, regCode: String!) : User
     resendCode(email: String!) : User
     login(email: String!, password: String!): Me
-    updateUser( email: String, desired_name: String, hobby: String, image: String, city: String, country: String, password: String, phone: String ): User
+    updateUser( email: String, desired_name: String, hobby: String, image: String, city: String, country: String, phone: String ): User
     sendMsg( receiver: String!, content: String!): User
     clearAllMsgs: User
     clearMsgHistory( msgId: String!):[Message]!
@@ -318,6 +319,7 @@ const resolvers = {
       if (passwordCompare) {
         const userId = user.id;
         const name = user.name;
+        const desired_name = user.desired_name;
         const image = user.image;
         const notification = user.notification;
         const userForToken = {
@@ -325,7 +327,7 @@ const resolvers = {
         };
 
         const token = jwt.sign(userForToken, process.env.SECRET);
-        return { userId, token, name, image, notification };
+        return { userId, token, name, image, desired_name, notification };
       }
 
       handleNotFound("Invalid Email/Password");
@@ -333,49 +335,58 @@ const resolvers = {
     updateUser: async (_, args, context) => {
       handleEmptyFields(args);
       const userId = handleInvalidID(context);
+      const fields = args;
 
-      //editable fields
-      const name = args.name;
-      const phone = args.phone;
-      const email = args.email;
-      const city = args.city;
-      const country = args.country;
-      const image = args.image;
-      const desired_name = args.desired_name;
-      const password = args.password;
-      const hobby = args.hobby;
+      const updates = {};
 
-      const userExists = await getUserById(userId);
+      Object.keys(fields)
+        .filter((f) => fields[f] !== "")
+        .forEach((f) => updates[f] === fields[f]);
+
+      console.log(updates);
+      // //editable fields
+      // const name = args.name;
+      // const phone = args.phone;
+      // const email = args.email;
+      // const city = args.city;
+      // const country = args.country;
+      // const image = args.image;
+      // const desired_name = args.desired_name;
+      // const password = args.password;
+      // const hobby = args.hobby;
+
+      const userExists = await User.findById(userId);
 
       if (userExists) {
         try {
-          if (phone) {
-            await User.findByIdAndUpdate(userId, { phone });
-            return { ...userExists, phone };
-          } else if (name) {
-            await User.findByIdAndUpdate(userId, { name });
-            return { ...userExists, name };
-          } else if (email) {
-            await User.findByIdAndUpdate(userId, { email });
-            return { ...userExists, email };
-          } else if (city) {
-            await User.findByIdAndUpdate(userId, { city });
-            return { ...userExists, city };
-          } else if (desired_name) {
-            await User.findByIdAndUpdate(userId, { desired_name });
-            return { ...userExists, desired_name };
-          } else if (country) {
-            await User.findByIdAndUpdate(userId, { country });
-            return { ...userExists, country };
-          } else if (hobby) {
-            await User.findByIdAndUpdate(userId, {
-              hobbies: [...new Set(userExists.hobbies.concat(hobby))],
-            });
-            return {
-              ...userExists,
-              hobbies: [...new Set(userExists.hobbies.concat(hobby))],
-            };
-          }
+          // if (phone) {
+          //   await User.findByIdAndUpdate(userId, { phone });
+          //   return { ...userExists, phone };
+          // } else if (name) {
+          //   await User.findByIdAndUpdate(userId, { name });
+          //   return { ...userExists, name };
+          // } else if (email) {
+          //   await User.findByIdAndUpdate(userId, { email });
+          //   return { ...userExists, email };
+          // } else if (city) {
+          //   await User.findByIdAndUpdate(userId, { city });
+          //   return { ...userExists, city };
+          // } else if (desired_name) {
+          //   await User.findByIdAndUpdate(userId, { desired_name });
+          //   return { ...userExists, desired_name };
+          // } else if (country) {
+          //   await User.findByIdAndUpdate(userId, { country });
+          //   return { ...userExists, country };
+          // } else if (hobby) {
+          //   await User.findByIdAndUpdate(userId, {
+          //     hobbies: [...new Set(userExists.hobbies.concat(hobby))],
+          //   });
+          //   return {
+          //     ...userExists,
+          //     hobbies: [...new Set(userExists.hobbies.concat(hobby))],
+          //   };
+          // }
+          await User.findByIdAndUpdate(userId, updates);
         } catch (error) {
           throw new GraphQLError(error.message);
         }
