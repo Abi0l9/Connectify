@@ -59,7 +59,7 @@ const schema = Schema({
   phone: {
     type: String,
     required: true,
-    // unique: true,
+    unique: true,
     minlength: 8,
   },
   passwordHash: String,
