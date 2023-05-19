@@ -2,6 +2,9 @@ const { GraphQLError } = require("graphql");
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const { PubSub } = require("graphql-subscriptions");
+
+const pubsub = new PubSub();
 
 const {
   lowerCase,
@@ -119,6 +122,7 @@ const typeDefs = `
     testUser: Int!
     clearUsers: String!
     findUser(name: String, phone: String, email: String): [User]!
+    getOneUser(id: String!): User
     allUsers: [User]!
     getMsgs(id: String!): [Message]!
     getConversations( receiverId: String!, msgId: String): Message
@@ -144,6 +148,10 @@ const typeDefs = `
     declineFriendRequest(friendId: String!): Friend
     deleteAllFriends: String
   }
+
+  type Subscription {
+    userUpdated: User!
+  }
 `;
 
 const resolvers = {
@@ -166,6 +174,13 @@ const resolvers = {
       } else if (email) {
         return await getUserByField("email", email);
       }
+    },
+    getOneUser: async (_, args, context) => {
+      // handleInvalidID(context);
+      handleEmptyFields(args);
+
+      const user = await User.findById(args.id);
+      return user;
     },
     allUsers: async () => await getAllUsers(),
     getMsgs: async (_, args) => {
@@ -342,7 +357,6 @@ const resolvers = {
       if (userExists) {
         try {
           await User.findByIdAndUpdate(userId, args);
-          return updated;
         } catch (error) {
           throw new GraphQLError(error.message);
         }
@@ -354,6 +368,10 @@ const resolvers = {
           },
         });
       }
+
+      pubsub.publish("USER_UPDATED", { userUpdated: updated });
+
+      return updated;
     },
     sendMsg: async (_, args, context) => {
       handleEmptyFields(args);
@@ -828,6 +846,11 @@ const resolvers = {
     //   await user.save();
     //   return target;
     // },
+  },
+  Subscription: {
+    userUpdated: {
+      subscribe: () => pubsub.asyncIterator("USER_UPDATED"),
+    },
   },
 };
 
