@@ -152,6 +152,10 @@ const typeDefs = `
 
   type Subscription {
     userUpdated: User!
+    madeFriendRequest: Friend!
+    acceptedFriendRequest: Friend!
+    cancelledFriendRequest: Friend!
+    declinedFriendRequest: Friend!
   }
 `;
 
@@ -637,6 +641,10 @@ const resolvers = {
         }
       }
 
+      pubsub.publish("MADE_FRIEND_REQUEST", {
+        madeFriendRequest: usersFriendList,
+      });
+
       return usersFriendList;
     },
     acceptFriendRequest: async (_, args, context) => {
@@ -707,6 +715,11 @@ const resolvers = {
       } else if (friendId === userId) {
         throw new GraphQLError("You can't accept yourself...");
       }
+
+      pubsub.publish("ACCEPTED_FRIEND_REQUEST", {
+        acceptedFriendRequest: usersFriendList,
+      });
+
       return usersFriendList;
     },
     cancelFriendRequest: async (_, args, context) => {
@@ -757,6 +770,11 @@ const resolvers = {
         };
         handleUnknownError(error);
       }
+
+      pubsub.publish("CANCELLED_FRIEND_REQUEST", {
+        cancelledFriendRequest: usersFriendList,
+      });
+
       return usersFriendList;
     },
     declineFriendRequest: async (_, args, context) => {
@@ -807,6 +825,11 @@ const resolvers = {
         };
         handleUnknownError(error);
       }
+
+      pubsub.publish("DECLINED_FRIEND_REQUEST", {
+        declinedFriendRequest: usersFriendList,
+      });
+
       return usersFriendList;
     },
 
@@ -857,6 +880,18 @@ const resolvers = {
   Subscription: {
     userUpdated: {
       subscribe: () => pubsub.asyncIterator("USER_UPDATED"),
+    },
+    madeFriendRequest: {
+      subscribe: () => pubsub.asyncIterator("MADE_FRIEND_REQUEST"),
+    },
+    acceptFriendRequest: {
+      subscribe: () => pubsub.asyncIterator("ACCEPTED_FRIEND_REQUEST"),
+    },
+    cancelledFriendRequest: {
+      subscribe: () => pubsub.asyncIterator("CANCELLED_FRIEND_REQUEST"),
+    },
+    declinedFriendRequest: {
+      subscribe: () => pubsub.asyncIterator("DECLINED_FRIEND_REQUEST"),
     },
   },
 };
