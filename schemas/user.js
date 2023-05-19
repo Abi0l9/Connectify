@@ -127,6 +127,7 @@ const typeDefs = `
     getMsgs(id: String!): [Message]!
     getConversations( receiverId: String!, msgId: String): Message
     getVerifiedUsers: [User]!
+    getFriends: Friend
   }
 
   type Mutation {
@@ -210,6 +211,12 @@ const resolvers = {
       const verified = users.filter((user) => user.regStatus === "active");
 
       return verified;
+    },
+    getFriends: async (_, _args, context) => {
+      const userId = await handleInvalidID(context);
+      const friends = await getFriendsList(userId);
+
+      return friends;
     },
   },
   Mutation: {
