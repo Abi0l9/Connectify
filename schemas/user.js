@@ -143,10 +143,10 @@ const typeDefs = `
     deleteOneMessage( convoId: String!, msgId: String!): [Inbox]
     updateMsg( convoId: String!, msgId: String!, update: String!): Inbox
     deleteBatchMessages( convoId: String!, msgIds: [String!]!): Message
-    makeFriendRequest(friendId: String!): Friend
-    acceptFriendRequest(friendId: String!): Friend
-    cancelFriendRequest(friendId: String!): Friend
-    declineFriendRequest(friendId: String!): Friend
+    makeFriendRequest(friendId: String!): User
+    acceptFriendRequest(friendId: String!): User
+    cancelFriendRequest(friendId: String!): User
+    declineFriendRequest(friendId: String!): User
     deleteAllFriends: String
   }
 
@@ -636,16 +636,22 @@ const resolvers = {
           await user.save();
           await friend.save();
           console.log("request sent");
+
+          pubsub.publish("MADE_FRIEND_REQUEST", {
+            madeFriendRequest: user,
+          });
+
+          return user;
         } catch (e) {
           handleUnknownError(e);
         }
       }
 
-      pubsub.publish("MADE_FRIEND_REQUEST", {
-        madeFriendRequest: usersFriendList,
-      });
+      // pubsub.publish("MADE_FRIEND_REQUEST", {
+      //   madeFriendRequest: usersFriendList,
+      // });
 
-      return usersFriendList;
+      // return usersFriendList;
     },
     acceptFriendRequest: async (_, args, context) => {
       handleEmptyFields(args);
@@ -701,6 +707,12 @@ const resolvers = {
           await user.save();
           await friend.save();
           console.log("request accepted");
+
+          pubsub.publish("ACCEPTED_FRIEND_REQUEST", {
+            acceptedFriendRequest: user,
+          });
+
+          return user;
         } catch (e) {
           console.log("got here errrrrrrrrrror");
           handleUnknownError(e);
@@ -716,11 +728,11 @@ const resolvers = {
         throw new GraphQLError("You can't accept yourself...");
       }
 
-      pubsub.publish("ACCEPTED_FRIEND_REQUEST", {
-        acceptedFriendRequest: usersFriendList,
-      });
+      // pubsub.publish("ACCEPTED_FRIEND_REQUEST", {
+      //   acceptedFriendRequest: usersFriendList,
+      // });
 
-      return usersFriendList;
+      // return usersFriendList;
     },
     cancelFriendRequest: async (_, args, context) => {
       handleEmptyFields(args);
@@ -760,6 +772,12 @@ const resolvers = {
         try {
           await user.save();
           await friend.save();
+
+          pubsub.publish("CANCELLED_FRIEND_REQUEST", {
+            cancelledFriendRequest: user,
+          });
+
+          return user;
         } catch (e) {
           handleUnknownError(e);
         }
@@ -771,11 +789,11 @@ const resolvers = {
         handleUnknownError(error);
       }
 
-      pubsub.publish("CANCELLED_FRIEND_REQUEST", {
-        cancelledFriendRequest: usersFriendList,
-      });
+      // pubsub.publish("CANCELLED_FRIEND_REQUEST", {
+      //   cancelledFriendRequest: usersFriendList,
+      // });
 
-      return usersFriendList;
+      // return usersFriendList;
     },
     declineFriendRequest: async (_, args, context) => {
       handleEmptyFields(args);
@@ -815,6 +833,12 @@ const resolvers = {
         try {
           await user.save();
           await friend.save();
+
+          pubsub.publish("DECLINED_FRIEND_REQUEST", {
+            declinedFriendRequest: user,
+          });
+
+          return user;
         } catch (e) {
           handleUnknownError(e);
         }
@@ -826,11 +850,11 @@ const resolvers = {
         handleUnknownError(error);
       }
 
-      pubsub.publish("DECLINED_FRIEND_REQUEST", {
-        declinedFriendRequest: usersFriendList,
-      });
+      // pubsub.publish("DECLINED_FRIEND_REQUEST", {
+      //   declinedFriendRequest: usersFriendList,
+      // });
 
-      return usersFriendList;
+      // return usersFriendList;
     },
 
     deleteAllFriends: async (_, args, context) => {
@@ -884,7 +908,7 @@ const resolvers = {
     madeFriendRequest: {
       subscribe: () => pubsub.asyncIterator("MADE_FRIEND_REQUEST"),
     },
-    acceptFriendRequest: {
+    acceptedFriendRequest: {
       subscribe: () => pubsub.asyncIterator("ACCEPTED_FRIEND_REQUEST"),
     },
     cancelledFriendRequest: {
