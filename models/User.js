@@ -4,6 +4,7 @@ const uniqueValidator = require("mongoose-unique-validator");
 const FriendBaseSchema = Schema({
   id: String,
   name: String,
+  desired_name: String,
 });
 // const FriendBase = model("FriendBase", FriendBaseSchema, "friendBase");
 

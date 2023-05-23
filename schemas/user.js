@@ -58,16 +58,19 @@ const typeDefs = `
   type Pendings {
     id: String
     name: String
+    desired_name: String
   }
 
   type Accepted {
     id: String
     name: String
+    desired_name: String
   }
 
   type Requests {
     id: String
     name: String
+    desired_name: String
   }
 
   type Friend {
@@ -152,10 +155,11 @@ const typeDefs = `
 
   type Subscription {
     userUpdated: User!
-    madeFriendRequest: Friend!
-    acceptedFriendRequest: Friend!
-    cancelledFriendRequest: Friend!
-    declinedFriendRequest: Friend!
+    madeFriendRequest: User!
+    acceptedFriendRequest: User!
+    cancelledFriendRequest: User!
+    declinedFriendRequest: User!
+    sentMsg: User
   }
 `;
 
@@ -437,6 +441,8 @@ const resolvers = {
           await senderExists.save();
           await receiverExists.save();
 
+          pubsub.publish("SENT_MSG", { sentMsg: senderExists });
+
           return senderExists;
         } else if (senderMsgsExists && !receiverMsgsExists) {
           console.log("receiver has no message history...");
@@ -446,6 +452,8 @@ const resolvers = {
 
           await senderExists.save();
           await receiverExists.save();
+
+          pubsub.publish("SENT_MSG", { sentMsg: receiverExists });
 
           return receiverExists;
         } else if (senderMsgsExists && receiverMsgsExists) {
@@ -457,6 +465,8 @@ const resolvers = {
           await senderExists.save();
           await receiverExists.save();
 
+          pubsub.publish("SENT_MSG", { sentMsg: senderExists });
+
           return senderExists;
         } else {
           console.log("first message");
@@ -466,6 +476,8 @@ const resolvers = {
 
           receiverExists.messages = receiverExists.messages.concat(initialMsg);
           await receiverExists.save();
+
+          pubsub.publish("SENT_MSG", { sentMsg: senderExists });
 
           return senderExists;
         }
@@ -624,12 +636,14 @@ const resolvers = {
         usersFriendList.pendings = usersFriendList.pendings.concat({
           id: friend.id,
           name: friend.name,
+          desired_name: friend.desired_name,
         });
 
         //add to user's requests list
         friendsFriendList.requests = friendsFriendList.requests.concat({
           id: user.id,
           name: user.name,
+          desired_name: user.desired_name,
         });
 
         try {
@@ -646,12 +660,6 @@ const resolvers = {
           handleUnknownError(e);
         }
       }
-
-      // pubsub.publish("MADE_FRIEND_REQUEST", {
-      //   madeFriendRequest: usersFriendList,
-      // });
-
-      // return usersFriendList;
     },
     acceptFriendRequest: async (_, args, context) => {
       handleEmptyFields(args);
@@ -727,12 +735,6 @@ const resolvers = {
       } else if (friendId === userId) {
         throw new GraphQLError("You can't accept yourself...");
       }
-
-      // pubsub.publish("ACCEPTED_FRIEND_REQUEST", {
-      //   acceptedFriendRequest: usersFriendList,
-      // });
-
-      // return usersFriendList;
     },
     cancelFriendRequest: async (_, args, context) => {
       handleEmptyFields(args);
@@ -788,12 +790,6 @@ const resolvers = {
         };
         handleUnknownError(error);
       }
-
-      // pubsub.publish("CANCELLED_FRIEND_REQUEST", {
-      //   cancelledFriendRequest: usersFriendList,
-      // });
-
-      // return usersFriendList;
     },
     declineFriendRequest: async (_, args, context) => {
       handleEmptyFields(args);
@@ -916,6 +912,9 @@ const resolvers = {
     },
     declinedFriendRequest: {
       subscribe: () => pubsub.asyncIterator("DECLINED_FRIEND_REQUEST"),
+    },
+    sentMsg: {
+      subscribe: () => pubsub.asyncIterator("SENT_MSG"),
     },
   },
 };

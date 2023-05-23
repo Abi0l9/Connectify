@@ -155,7 +155,7 @@ const getUserById = async (id) => {
 };
 
 const getFriendsList = async (id) => {
-  const user = await getUserById(id);
+  const user = await User.findById(id);
   return user.friends;
 };
 
