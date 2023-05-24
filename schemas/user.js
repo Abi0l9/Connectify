@@ -131,6 +131,7 @@ const typeDefs = `
     getConversations( receiverId: String!, msgId: String): Message
     getVerifiedUsers: [User]!
     getFriends: Friend
+    getAconversation(receiverId: String!): Message
   }
 
   type Mutation {
