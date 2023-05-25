@@ -160,6 +160,10 @@ const typeDefs = `
     acceptedFriendRequest: User!
     cancelledFriendRequest: User!
     declinedFriendRequest: User!
+    firstMsgBySender: User
+    receiverHasMsgHistory: User
+    firstMsgToReceiver: User
+    senderHasMsgHistory: User
     sentMsg: User
   }
 `;
@@ -442,7 +446,7 @@ const resolvers = {
           await senderExists.save();
           await receiverExists.save();
 
-          pubsub.publish("SENT_MSG", { sentMsg: senderExists });
+          pubsub.publish("SENT_MSG", { sentMsg: receiverExists });
 
           return senderExists;
         } else if (senderMsgsExists && !receiverMsgsExists) {
@@ -466,7 +470,7 @@ const resolvers = {
           await senderExists.save();
           await receiverExists.save();
 
-          pubsub.publish("SENT_MSG", { sentMsg: senderExists });
+          pubsub.publish("SENT_MSG", { sentMsg: receiverExists });
 
           return senderExists;
         } else {
@@ -478,7 +482,7 @@ const resolvers = {
           receiverExists.messages = receiverExists.messages.concat(initialMsg);
           await receiverExists.save();
 
-          pubsub.publish("SENT_MSG", { sentMsg: senderExists });
+          pubsub.publish("SENT_MSG", { sentMsg: receiverExists });
 
           return senderExists;
         }
