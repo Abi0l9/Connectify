@@ -446,7 +446,16 @@ const resolvers = {
           await senderExists.save();
           await receiverExists.save();
 
+          pubsub.publish("FIRST_MSG_BY_SENDER", {
+            firstMsgBySender: senderExists,
+          });
+
+          pubsub.publish("RECEIVER_HAS_MSG_HISTORY", {
+            receiverHasMsgHistory: receiverExists,
+          });
+
           pubsub.publish("SENT_MSG", { sentMsg: receiverExists });
+          pubsub.publish("SENT_MSG", { sentMsg: senderExists });
 
           return senderExists;
         } else if (senderMsgsExists && !receiverMsgsExists) {
@@ -458,7 +467,15 @@ const resolvers = {
           await senderExists.save();
           await receiverExists.save();
 
+          pubsub.publish("FIRST_MSG_TO_RECEIVER", {
+            firstMsgToReceiver: receiverExists,
+          });
+          pubsub.publish("SENDER_HAS_MSG_HISTORY", {
+            senderHasMsgHistory: senderExists,
+          });
+
           pubsub.publish("SENT_MSG", { sentMsg: receiverExists });
+          pubsub.publish("SENT_MSG", { sentMsg: senderExists });
 
           return receiverExists;
         } else if (senderMsgsExists && receiverMsgsExists) {
@@ -470,7 +487,16 @@ const resolvers = {
           await senderExists.save();
           await receiverExists.save();
 
+          pubsub.publish("RECEIVER_HAS_MSG_HISTORY", {
+            receiverHasMsgHistory: receiverExists,
+          });
+
+          pubsub.publish("SENDER_HAS_MSG_HISTORY", {
+            senderHasMsgHistory: senderExists,
+          });
+
           pubsub.publish("SENT_MSG", { sentMsg: receiverExists });
+          pubsub.publish("SENT_MSG", { sentMsg: senderExists });
 
           return senderExists;
         } else {
@@ -482,7 +508,18 @@ const resolvers = {
           receiverExists.messages = receiverExists.messages.concat(initialMsg);
           await receiverExists.save();
 
+          // pubsub.publish("SENT_MSG", { sentMsg: senderExists });
+
+          pubsub.publish("FIRST_MSG_BY_SENDER", {
+            firstMsgBySender: senderExists,
+          });
+
+          pubsub.publish("FIRST_MSG_TO_RECEIVER", {
+            firstMsgToReceiver: receiverExists,
+          });
+
           pubsub.publish("SENT_MSG", { sentMsg: receiverExists });
+          pubsub.publish("SENT_MSG", { sentMsg: senderExists });
 
           return senderExists;
         }
@@ -917,6 +954,18 @@ const resolvers = {
     },
     declinedFriendRequest: {
       subscribe: () => pubsub.asyncIterator("DECLINED_FRIEND_REQUEST"),
+    },
+    firstMsgBySender: {
+      subscribe: () => pubsub.asyncIterator("FIRST_MSG_BY_SENDER"),
+    },
+    receiverHasMsgHistory: {
+      subscribe: () => pubsub.asyncIterator("RECEIVER_HAS_MSG_HISTORY"),
+    },
+    firstMsgToReceiver: {
+      subscribe: () => pubsub.asyncIterator("FIRST_MSG_TO_RECEIVER"),
+    },
+    senderHasMsgHistory: {
+      subscribe: () => pubsub.asyncIterator("SENDER_HAS_MSG_HISTORY"),
     },
     sentMsg: {
       subscribe: () => pubsub.asyncIterator("SENT_MSG"),
