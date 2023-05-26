@@ -29,6 +29,7 @@ const { typeDefs: NetworkTypes } = require("./schemas/network");
 const { resolvers: NetworkResolvers } = require("./schemas/network");
 const User = require("./models/User");
 const { getUserById } = require("./utils/userHelpers");
+const path = require("path");
 
 const start = async () => {
   const app = express();
@@ -64,9 +65,26 @@ const start = async () => {
 
   await server.start();
 
+  const routes = [
+    "/",
+    "/friends",
+    "/feed",
+    "/messages",
+    "/login",
+    "/sign-up",
+    "/profile/*",
+  ];
+
+  routes.forEach((route) => {
+    app.get(route, (req, res) => {
+      res.sendFile(path.join(__dirname, "./build/index.html"));
+    });
+  });
+
   app.use(
     "/",
     cors(),
+    express.static("build"),
     express.json(),
     expressMiddleware(server, {
       context: async ({ req }) => {
