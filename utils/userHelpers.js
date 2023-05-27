@@ -16,7 +16,7 @@ const handleEmptyFields = (args) => {
 const handleNotFound = (initialMsg = "", value = "", msg = "") => {
   throw new GraphQLError(`${initialMsg} '${value}' ${msg}`, {
     extensions: {
-      code: "BAD_USER_INPUT",
+      code: "NOT_FOUND",
       invalidArg: value,
     },
   });

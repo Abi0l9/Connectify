@@ -6,7 +6,20 @@ const FriendBaseSchema = Schema({
   name: String,
   desired_name: String,
 });
-// const FriendBase = model("FriendBase", FriendBaseSchema, "friendBase");
+
+const NotificationContentSchema = Schema({
+  contentType: String,
+  message: String,
+});
+
+const NotificationSchema = Schema({
+  count: Number,
+  content: [
+    {
+      type: NotificationContentSchema,
+    },
+  ],
+});
 
 const MakingFriendsSchema = Schema({
   requests: [
@@ -30,6 +43,7 @@ const schema = Schema({
   name: {
     type: String,
     required: true,
+    unique: true,
     minlength: 5,
   },
   email: {
@@ -99,7 +113,7 @@ const schema = Schema({
       },
     },
   ],
-  notification: [{ id: String }],
+  notification: NotificationSchema,
   friends: {
     type: MakingFriendsSchema,
     index: true,

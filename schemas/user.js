@@ -51,8 +51,15 @@ const typeDefs = `
     sender: Sender
   }
 
+  type NotificationContent {
+    contentType: String
+    message: String
+  } 
+
   type Notification {
     id: ID!
+    count: Int
+    content: [NotificationContent]
   }
 
   type Pendings {
@@ -109,7 +116,7 @@ const typeDefs = `
     network: Network
     friends: Friend
     messages: [Message]!
-    notification: [Notification]!
+    notification: Notification
   }
 
   type Me {
@@ -118,7 +125,7 @@ const typeDefs = `
     name: String!
     desired_name: String!
     image: String
-    notification: [Notification]!
+    notification: Notification
   }
 
   type Query {
@@ -152,6 +159,7 @@ const typeDefs = `
     cancelFriendRequest(friendId: String!): User
     declineFriendRequest(friendId: String!): User
     deleteAllFriends: String
+    clearNotifications: User
   }
 
   type Subscription {
@@ -267,10 +275,16 @@ const resolvers = {
         accepted: [],
       };
 
+      const notification = {
+        count: 0,
+        content: [],
+      };
+
       const user = new User({
         ...args,
         passwordHash,
         friends,
+        notification,
         confirmationCode,
       });
 
@@ -393,6 +407,22 @@ const resolvers = {
 
       return updated;
     },
+    clearNotifications: async (_, _args, context) => {
+      const userId = handleInvalidID(context);
+
+      const userExists = await User.findById(userId);
+
+      userExists.notification.count = 0;
+      userExists.notification.content = [];
+
+      try {
+        await userExists.save();
+      } catch (e) {
+        handleUnknownError(e);
+      }
+
+      return userExists;
+    },
     sendMsg: async (_, args, context) => {
       handleEmptyFields(args);
 
@@ -401,6 +431,11 @@ const resolvers = {
 
       const senderExists = await User.findById(sender);
       const receiverExists = await User.findById(receiver);
+
+      const notificationContent = {
+        contentType: "message",
+        message: `New message from ${senderExists.name}`,
+      };
 
       if (!receiverExists) {
         handleNotFound("Receiver with id ", receiver, " not found");
@@ -443,6 +478,11 @@ const resolvers = {
           senderExists.messages = senderExists.messages.concat(initialMsg);
           receiverMsgsExists.inbox = receiverMsgsExists.inbox.concat(newMsg);
 
+          receiverExists.notification.count =
+            receiverExists.notification.count + 1;
+          receiverExists.notification.content =
+            receiverExists.notification.content.concat(notificationContent);
+
           await senderExists.save();
           await receiverExists.save();
 
@@ -464,6 +504,11 @@ const resolvers = {
           senderMsgsExists.inbox = senderMsgsExists.inbox.concat(newMsg);
           receiverExists.messages = receiverExists.messages.concat(initialMsg);
 
+          receiverExists.notification.count =
+            receiverExists.notification.count + 1;
+          receiverExists.notification.content =
+            receiverExists.notification.content.concat(notificationContent);
+
           await senderExists.save();
           await receiverExists.save();
 
@@ -483,6 +528,11 @@ const resolvers = {
 
           senderMsgsExists.inbox = senderMsgsExists.inbox.concat(newMsg);
           receiverMsgsExists.inbox = receiverMsgsExists.inbox.concat(newMsg);
+
+          receiverExists.notification.count =
+            receiverExists.notification.count + 1;
+          receiverExists.notification.content =
+            receiverExists.notification.content.concat(notificationContent);
 
           await senderExists.save();
           await receiverExists.save();
@@ -506,6 +556,12 @@ const resolvers = {
           await senderExists.save();
 
           receiverExists.messages = receiverExists.messages.concat(initialMsg);
+
+          receiverExists.notification.count =
+            receiverExists.notification.count + 1;
+          receiverExists.notification.content =
+            receiverExists.notification.content.concat(notificationContent);
+
           await receiverExists.save();
 
           // pubsub.publish("SENT_MSG", { sentMsg: senderExists });
@@ -627,6 +683,11 @@ const resolvers = {
       const user = await User.findById(userId);
       const friend = await User.findById(friendId);
 
+      const notificationContent = {
+        contentType: "friend",
+        message: `${friend.name} sent you a connect request.`,
+      };
+
       if (!friend) {
         handleNotFound("user with id ", friendId, "does not exist.");
       }
@@ -681,6 +742,10 @@ const resolvers = {
           desired_name: friend.desired_name,
         });
 
+        friend.notification.count = friend.notification.count + 1;
+        friend.notification.content =
+          friend.notification.content.concat(notificationContent);
+
         //add to user's requests list
         friendsFriendList.requests = friendsFriendList.requests.concat({
           id: user.id,
@@ -711,6 +776,11 @@ const resolvers = {
 
       const user = await User.findById(userId);
       const friend = await User.findById(friendId);
+
+      const notificationContent = {
+        contentType: "friend",
+        message: `${user.name} accepted your connect request.`,
+      };
 
       if (!friend) {
         handleNotFound("user with id ", friendId, "does not exist.");
@@ -752,6 +822,10 @@ const resolvers = {
         friendsFriendList.accepted = friendsFriendList.accepted.concat(
           userExistsInFriendsPendingsList
         );
+
+        friend.notification.count = friend.notification.count + 1;
+        friend.notification.content =
+          friend.notification.content.concat(notificationContent);
 
         try {
           await user.save();
@@ -842,6 +916,11 @@ const resolvers = {
       const user = await User.findById(userId);
       const friend = await User.findById(friendId);
 
+      const notificationContent = {
+        contentType: "friend",
+        message: `Connect request to ${user.name} got declined, please wait for a while before sending them another request.`,
+      };
+
       if (!friend) {
         handleNotFound("user with id ", friendId, "does not exist.");
       }
@@ -868,6 +947,10 @@ const resolvers = {
           (f) => f.id !== userExistsInFriendsPendingsList.id
         );
 
+        friend.notification.count = friend.notification.count + 1;
+        friend.notification.content =
+          friend.notification.content.concat(notificationContent);
+
         try {
           await user.save();
           await friend.save();
@@ -887,12 +970,6 @@ const resolvers = {
         };
         handleUnknownError(error);
       }
-
-      // pubsub.publish("DECLINED_FRIEND_REQUEST", {
-      //   declinedFriendRequest: usersFriendList,
-      // });
-
-      // return usersFriendList;
     },
 
     deleteAllFriends: async (_, args, context) => {
