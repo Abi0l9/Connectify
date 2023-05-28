@@ -84,7 +84,7 @@ const start = async () => {
   app.use(
     "/",
     cors(),
-    // express.static("build"),
+    express.static("build"),
     express.json(),
     expressMiddleware(server, {
       context: async ({ req }) => {
