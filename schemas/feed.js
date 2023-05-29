@@ -5,13 +5,55 @@ const {
   handleInvalidID,
   now,
   handleUnknownError,
+  getAllUsers,
 } = require("../utils/userHelpers");
 
+const FeedFormatter = async () => {
+  const feed = await Feed.find({});
+
+  const usersQuery = await getAllUsers();
+
+  const users = usersQuery.map((u) => {
+    return {
+      id: u.id,
+      name: u.name,
+    };
+  });
+
+  const UsersToFeed = feed?.map((f) => {
+    const user = users.find((u) => u.id === f.poster.toString());
+    return {
+      id: f._id.toString(),
+      media: f.media,
+      content: f.content,
+      poster: user,
+      time: f.time,
+    };
+  });
+
+  return UsersToFeed;
+  // .map((f) => {
+  // return {
+  //   id: f._id.toString(),
+  //   media: f.media,
+  //   content: f.content,
+  //   poster: f.poster,
+  //   time: f.time,
+  // };
+  // });
+};
+
 const typeDefs = `
+
+  type Poster {
+    id: String
+    name: String
+  }
+
   type Feed {
     id: ID!
     content: String
-    poster: String
+    poster: Poster
     time: String
     media: String
   }
@@ -19,11 +61,12 @@ const typeDefs = `
   type Query {
     testFeed: Int!
     getAllFeeds: [Feed]!
+    getUserFeeds: [Feed]!
   }
 
   type Mutation {
-    createFeed(content: String!, media:String): Feed
-    deleteFeed(feedId: String!): [Feed]!
+    createFeed(content: String!, media:String): User
+    deleteFeed(feedId: String!): User
   }
 `;
 
@@ -31,8 +74,13 @@ const resolvers = {
   Query: {
     testFeed: () => 2,
     getAllFeeds: async (_, args, context) => {
-      const userId = handleInvalidID(context);
+      handleInvalidID(context);
 
+      const feeds = await FeedFormatter();
+      return feeds;
+    },
+    getUserFeeds: async (_, _args, context) => {
+      const userId = handleInvalidID(context);
       const { feed } = await User.findById(userId).populate("feed", {
         id: 1,
         content: 1,
@@ -40,7 +88,9 @@ const resolvers = {
         time: 1,
       });
 
-      return feed;
+      const userFeeds = feed.filter((f) => f.poster.toString() === userId);
+
+      return userFeeds;
     },
   },
   Mutation: {
@@ -67,7 +117,7 @@ const resolvers = {
         handleUnknownError(error);
       }
 
-      return newFeed;
+      return user;
     },
     deleteFeed: async (_, args, context) => {
       handleEmptyFields(args);
@@ -87,7 +137,7 @@ const resolvers = {
         handleUnknownError(e);
       }
 
-      return remFeeds;
+      return user;
     },
   },
 };

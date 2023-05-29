@@ -685,7 +685,7 @@ const resolvers = {
 
       const notificationContent = {
         contentType: "friend",
-        message: `${friend.name} sent you a connect request.`,
+        message: `${user.name} sent you a connect request.`,
       };
 
       if (!friend) {
