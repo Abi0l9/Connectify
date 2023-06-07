@@ -1,5 +1,16 @@
 const { Schema, model } = require("mongoose");
 
+const UserCommentSchema = Schema({
+  id: String,
+  name: String,
+});
+
+const commentSchema = Schema({
+  commentBy: UserCommentSchema,
+  time: String,
+  likes: Number,
+});
+
 const schema = Schema({
   content: {
     type: String,
@@ -11,6 +22,8 @@ const schema = Schema({
   },
   time: String,
   media: String,
+  comment: commentSchema,
+  likes: Number,
 });
 
 const Feed = model("Feed", schema);
