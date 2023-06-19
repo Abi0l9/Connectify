@@ -6,6 +6,7 @@ const {
   now,
   handleUnknownError,
   getAllUsers,
+  handleNotFound,
 } = require("../utils/userHelpers");
 
 const FeedFormatter = async () => {
@@ -50,12 +51,18 @@ const typeDefs = `
     name: String
   }
 
+  type Likes {
+    userId: String
+    likes: Int
+  }
+
   type Feed {
     id: ID!
     content: String
     poster: Poster
     time: String
     media: String
+    likes: Likes
   }
 
   type Query {
@@ -67,6 +74,7 @@ const typeDefs = `
   type Mutation {
     createFeed(content: String!, media:String): User
     deleteFeed(feedId: String!): User
+    likeFeed(posterId: String, feedId: String!): User
   }
 `;
 
@@ -138,6 +146,44 @@ const resolvers = {
       }
 
       return user;
+    },
+    likeFeed: async (_, args, context) => {
+      handleEmptyFields(args);
+      const userId = handleInvalidID(context);
+
+      const { posterId, feedId } = args;
+
+      const user = await User.findById(posterId).populate("feed", {
+        id: 1,
+        content: 1,
+        poster: 1,
+        time: 1,
+        likes: 1,
+      });
+
+      user.feed = user.feed.map((f) => {
+        if (f.id === feedId) {
+          // if feed exists
+
+          //check if the user has liked the feed before, then, remove the user from list
+          const userLikedTheFeedBefore = f.likes.filter(
+            (fd) => fd.userId !== userId
+          );
+
+          //else add a like for the user and add him to list
+          if (!userLikedTheFeedBefore.length) {
+            f.likes = f.likes.concat({ userId, likes: 1 });
+          }
+        }
+      });
+
+      try {
+        await user.save();
+      } catch (e) {
+        handleUnknownError(e);
+      }
+
+      return user.feed;
     },
   },
 };

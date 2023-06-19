@@ -5,6 +5,11 @@ const UserCommentSchema = Schema({
   name: String,
 });
 
+const LikesSchema = Schema({
+  userId: String,
+  likes: Number,
+});
+
 const commentSchema = Schema({
   commentBy: UserCommentSchema,
   time: String,
@@ -23,7 +28,7 @@ const schema = Schema({
   time: String,
   media: String,
   comment: commentSchema,
-  likes: Number,
+  likes: [LikesSchema],
 });
 
 const Feed = model("Feed", schema);
