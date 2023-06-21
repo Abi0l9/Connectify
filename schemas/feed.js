@@ -7,6 +7,7 @@ const {
   handleUnknownError,
   getAllUsers,
   handleNotFound,
+  getUserById,
 } = require("../utils/userHelpers");
 
 const FeedFormatter = async () => {
@@ -81,6 +82,7 @@ const typeDefs = `
     createFeed(content: String!, media:String): Feed
     deleteFeed(feedId: String!): [Feed]!
     likeFeed( feedId: String!): Feed
+    addComment(feedId: String!, content: String!, media:String): Feed
   }
 `;
 
@@ -128,6 +130,7 @@ const resolvers = {
         time: now(),
         poster: userId,
         media: media ? media : null,
+        comments: [],
       };
 
       const newFeed = new Feed(feed);
@@ -189,6 +192,31 @@ const resolvers = {
         await user.save();
       } catch (e) {
         handleUnknownError(e);
+      }
+
+      return feed;
+    },
+    addComment: async (_, args, context) => {
+      handleEmptyFields(args);
+      const { feedId, content, media } = args;
+      const userId = handleInvalidID(context);
+
+      const feed = await Feed.findById(feedId);
+      const { id, name } = await getUserById(userId);
+
+      const comment = {
+        content,
+        time: now(),
+        commentBy: { id, name },
+        media: media ? media : null,
+      };
+
+      feed.comments = feed.comments.concat(comment);
+
+      try {
+        await feed.save();
+      } catch (error) {
+        handleUnknownError(error);
       }
 
       return feed;
