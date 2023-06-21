@@ -83,6 +83,7 @@ const typeDefs = `
     deleteFeed(feedId: String!): [Feed]!
     likeFeed( feedId: String!): Feed
     addComment(feedId: String!, content: String!, media:String): Feed
+    deleteComment(feedId: String!, commentId: String!): Feed
   }
 `;
 
@@ -212,6 +213,25 @@ const resolvers = {
       };
 
       feed.comments = feed.comments.concat(comment);
+
+      try {
+        await feed.save();
+      } catch (error) {
+        handleUnknownError(error);
+      }
+
+      return feed;
+    },
+    deleteComment: async (_, args, context) => {
+      handleEmptyFields(args);
+      const { feedId, commentId } = args;
+      const userId = handleInvalidID(context);
+
+      const feed = await Feed.findById(feedId);
+
+      feed.comments = feed.comments.filter(
+        (comment) => comment.id !== commentId
+      );
 
       try {
         await feed.save();
