@@ -7,21 +7,9 @@ const UserCommentSchema = Schema({
 
 const commentSchema = Schema({
   commentBy: UserCommentSchema,
+  content: String,
   time: String,
   likes: Number,
-});
-
-const LikesSchema = Schema({
-  userId: String,
-  likes: Number,
-});
-
-const Likes = Schema({
-  likes: [
-    {
-      type: LikesSchema,
-    },
-  ],
 });
 
 const schema = Schema({
@@ -35,7 +23,12 @@ const schema = Schema({
   },
   time: String,
   media: String,
-  comment: commentSchema,
+  comments: {
+    type: [commentSchema],
+    default: function () {
+      return !this.comments ? [] : this.comments;
+    },
+  },
   likes: {
     type: Number,
     default: function () {

@@ -52,24 +52,34 @@ const typeDefs = `
     name: String
   }
 
+  type Comment {
+    id: ID!
+    commentBy: Poster
+    content: String
+    time: String
+    likes: Int
+  }
+
   type Feed {
     id: ID!
     content: String
     poster: Poster
     time: String
     media: String
+    comments: [Comment]
     likes: Int
   }
 
   type Query {
     testFeed: Int!
     getAllFeeds: [Feed]!
+    getOneFeed(feedId: String!): Feed
     getUserFeeds: [Feed]!
   }
 
   type Mutation {
-    createFeed(content: String!, media:String): User
-    deleteFeed(feedId: String!): User
+    createFeed(content: String!, media:String): Feed
+    deleteFeed(feedId: String!): [Feed]!
     likeFeed( feedId: String!): Feed
   }
 `;
@@ -82,6 +92,15 @@ const resolvers = {
 
       const feeds = await FeedFormatter();
       return feeds;
+    },
+    getOneFeed: async (_, args, context) => {
+      handleInvalidID(context);
+
+      const { feedId } = args;
+
+      const feeds = await FeedFormatter();
+      const feed = feeds.find((fd) => fd.id === feedId);
+      return feed;
     },
     getUserFeeds: async (_, _args, context) => {
       const userId = handleInvalidID(context);
@@ -97,17 +116,12 @@ const resolvers = {
 
       return userFeeds;
     },
-    // getFeeds:  async(_, args, context) => {
-    //   const userId = handleInvalidID(context)
-
-    // }
   },
   Mutation: {
     createFeed: async (_, args, context) => {
       handleEmptyFields(args);
       const { content, media } = args;
       const userId = handleInvalidID(context);
-      const user = await User.findById(userId);
 
       const feed = {
         content,
@@ -119,14 +133,12 @@ const resolvers = {
       const newFeed = new Feed(feed);
 
       try {
-        user.feed = user.feed.concat(newFeed);
-        await user.save();
         await newFeed.save();
       } catch (error) {
         handleUnknownError(error);
       }
 
-      return user;
+      return feed;
     },
     deleteFeed: async (_, args, context) => {
       handleEmptyFields(args);
@@ -146,7 +158,7 @@ const resolvers = {
         handleUnknownError(e);
       }
 
-      return user;
+      return remFeeds;
     },
     likeFeed: async (_, args, context) => {
       handleEmptyFields(args);
@@ -165,16 +177,12 @@ const resolvers = {
       if (!userAlreadyLikedTheFeed) {
         console.log("first like");
         user.likedFeeds = user.likedFeeds.concat({ feedId });
-        console.log("likes :", feed.likes);
         feed.likes = feed.likes + 1;
       } else {
         console.log("not first like");
         user.likedFeeds = user.likedFeeds.filter((fd) => feedId !== fd.feedId);
-        console.log("likes :", feed.likes);
         feed.likes = feed.likes - 1;
       }
-
-      console.log(user.likedFeeds);
 
       try {
         await feed.save();
