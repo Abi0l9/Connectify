@@ -39,6 +39,10 @@ const MakingFriendsSchema = Schema({
   ],
 });
 
+const LikedFeeds = Schema({
+  feedId: String,
+});
+
 const schema = Schema({
   name: {
     type: String,
@@ -87,6 +91,11 @@ const schema = Schema({
     {
       type: Schema.Types.ObjectId,
       ref: "Feed",
+    },
+  ],
+  likedFeeds: [
+    {
+      type: LikedFeeds,
     },
   ],
   messages: [

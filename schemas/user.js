@@ -87,6 +87,10 @@ const typeDefs = `
     requests: [Requests]
   }
 
+  type LikedFeeds {
+    feedId: String
+  }
+
   enum Gender {
     male
     female
@@ -113,6 +117,7 @@ const typeDefs = `
     confirmationCode: String
     regStatus: RegStatus
     feed: [Feed]!
+    likedFeeds: [LikedFeeds]!
     network: Network
     friends: Friend
     messages: [Message]!

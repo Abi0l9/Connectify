@@ -36,11 +36,12 @@ const schema = Schema({
   time: String,
   media: String,
   comment: commentSchema,
-  likes: [
-    {
-      type: LikesSchema,
+  likes: {
+    type: Number,
+    default: function () {
+      return !this.likes ? 0 : this.likes;
     },
-  ],
+  },
 });
 
 const Feed = model("Feed", schema);

@@ -52,18 +52,13 @@ const typeDefs = `
     name: String
   }
 
-  type Likes {
-    userId: String
-    likes: Int
-  }
-
   type Feed {
     id: ID!
     content: String
     poster: Poster
     time: String
     media: String
-    likes: [Likes]
+    likes: Int
   }
 
   type Query {
@@ -159,20 +154,31 @@ const resolvers = {
 
       const { feedId } = args;
 
+      const user = await User.findById(userId);
       const feed = await Feed.findById(feedId);
+
+      // check if user has already liked the feed before
+
       const userAlreadyLikedTheFeed =
-        feed.likes.find((like) => like.userId === userId) || null;
+        user.likedFeeds.find((fd) => feedId === fd.feedId) || null;
 
       if (!userAlreadyLikedTheFeed) {
         console.log("first like");
-        feed.likes = feed.likes.concat({ userId, likes: 1 });
+        user.likedFeeds = user.likedFeeds.concat({ feedId });
+        console.log("likes :", feed.likes);
+        feed.likes = feed.likes + 1;
       } else {
         console.log("not first like");
-        feed.likes = feed.likes.filter((fd) => fd.userId !== userId);
+        user.likedFeeds = user.likedFeeds.filter((fd) => feedId !== fd.feedId);
+        console.log("likes :", feed.likes);
+        feed.likes = feed.likes - 1;
       }
+
+      console.log(user.likedFeeds);
 
       try {
         await feed.save();
+        await user.save();
       } catch (e) {
         handleUnknownError(e);
       }

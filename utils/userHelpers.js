@@ -95,7 +95,6 @@ const getAllUsers = async (args = {}) => {
   const users = await User.find({}).populate("feed", {
     id: 1,
     content: 1,
-    poster: 1,
     time: 1,
   });
 
@@ -113,6 +112,7 @@ const getAllUsers = async (args = {}) => {
       regStatus: user.regStatus,
       hobbies: user.hobbies,
       feed: user.feed,
+      likedFeeds: user.likedFeeds,
       friends: user.friends,
       messages: user.messages,
       passwordHash: user.passwordHash,
